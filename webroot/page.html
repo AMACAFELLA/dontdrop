@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <title>Don't Drop</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div id="gameWebView" class="game-container">
+      <!-- Menu Screen -->
+      <div id="menu-screen" class="screen active">
+        <div class="menu-background">
+          <!-- Animated decorative elements -->
+          <div class="floating-ball"></div>
+          <div class="floating-ball"></div>
+          <div class="floating-ball"></div>
+          <div class="floating-paddle"></div>
+          <div class="floating-paddle"></div>
+          <div class="table-lines">
+            <div class="table-center-line"></div>
+            <div class="table-net"></div>
+          </div>
+        </div>
+        <div class="menu-content">
+          <div class="title-container">
+            <div class="title-ping-pong">
+              <div class="ball-decoration"></div>
+              <h1 class="game-title">Don't Drop</h1>
+              <div class="paddle-decoration"></div>
+            </div>
+            <div class="title-underline"></div>
+            <p class="game-subtitle">Master the Paddle, Own the Table</p>
+          </div>
+          <nav class="menu-nav">
+            <button id="start-btn" class="menu-button primary">
+              <span class="button-content">
+                <span class="button-icon play"></span>
+                Play Game
+              </span>
+            </button>
+            <button id="leaderboard-btn" class="menu-button">
+              <span class="button-content">
+                <span class="button-icon trophy"></span>
+                Leaderboard
+              </span>
+            </button>
+            <button id="how-to-play-btn" class="menu-button">
+              <span class="button-content">
+                <span class="button-icon help"></span>
+                How to Play
+              </span>
+            </button>
+          </nav>
+        </div>
+      </div>
+
+      <!-- Game Screen -->
+      <div id="game-screen" class="screen">
+        <div class="game-ui">
+          <div class="score-container">
+            <div class="score-box">
+              <span class="score-label">Score</span>
+              <span id="score" class="score-value">0</span>
+            </div>
+            <div class="score-box">
+              <span class="score-label">High Score</span>
+              <span id="highScore" class="score-value">0</span>
+            </div>
+          </div>
+        </div>
+        <div id="gameArea">
+          <div id="ball"></div>
+        </div>
+        <div id="instructions" class="instructions pulse">
+          Click or tap to start!
+        </div>
+      </div>
+
+      <!-- Leaderboard Screen -->
+      <div id="leaderboard-screen" class="screen">
+        <div class="screen-header">
+          <h2>Top Players</h2>
+        </div>
+        <div class="leaderboard-container">
+          <div class="leaderboard-header">
+            <span>Rank</span>
+            <span>Player</span>
+            <span>Score</span>
+          </div>
+          <div id="leaderboard-body" class="leaderboard-grid">
+            <!-- Leaderboard entries will be added here dynamically -->
+          </div>
+        </div>
+        <button id="back-to-menu-btn" class="menu-button">Back to Menu</button>
+      </div>
+
+      <!-- How to Play Modal -->
+      <div id="how-to-play-modal" class="modal">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h2>How to Play</h2>
+          </div>
+          <div class="modal-body">
+            <div class="instruction-card">
+              <div class="instruction-icon move"></div>
+              <h3>Move</h3>
+              <p>Use your mouse or finger to control the paddle</p>
+            </div>
+            <div class="instruction-card">
+              <div class="instruction-icon bounce"></div>
+              <h3>Bounce</h3>
+              <p>Keep the ball bouncing as long as possible</p>
+            </div>
+            <div class="instruction-card">
+              <div class="instruction-icon score"></div>
+              <h3>Score</h3>
+              <p>The higher the ball goes, the more points you get!</p>
+            </div>
+          </div>
+          <button class="modal-close menu-button">Got it!</button>
+        </div>
+      </div>
+    </div>
+    <script type="module" src="script.js"></script>
+  </body>
+</html>
