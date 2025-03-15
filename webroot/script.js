@@ -221,8 +221,8 @@ function handleTouchMove(e) {
 }
 
 // Update paddle dimensions
-const PADDLE_WIDTH = 200; // Actual visible width of paddle
-const PADDLE_HEIGHT = 15; // Actual visible height of paddle
+const PADDLE_WIDTH = 120; // Reduced from 200
+const PADDLE_HEIGHT = 10; // Reduced from 15
 const BALL_SIZE = 50;
 
 function updatePaddlePosition(x, y) {
@@ -307,23 +307,25 @@ let scoreMultiplier = 1;
 let consecutiveHits = 0;
 const COMBO_THRESHOLD = 3;
 const MAX_MULTIPLIER = 4;
+const QUICK_HIT_THRESHOLD = 1500; // Time window in ms for quick hits
+let lastHitTime = 0;
 
 function updateScore() {
-    // Score based on ball height with multiplier
-    const heightScore = Math.max(0, Math.floor((gameArea.offsetHeight - ballY) / 10));
-    if (heightScore > currentScore) {
-        const scoreDiff = (heightScore - currentScore) * scoreMultiplier;
-        if (scoreDiff > 0) {
-            createScorePopup(ballX, ballY, `+${scoreDiff}`);
-        }
-        currentScore = heightScore;
-        document.getElementById('score').textContent = currentScore;
-        
-        postWebViewMessage({
-            type: 'updateScore',
-            data: { score: currentScore }
-        });
+    // Only give height bonus points on specific height thresholds
+    const heightPercent = ((gameArea.offsetHeight - ballY) / gameArea.offsetHeight) * 100;
+    let heightBonus = 0;
+    
+    // Award bonus points at certain height thresholds
+    if (heightPercent >= 90) heightBonus = 2;
+    else if (heightPercent >= 75) heightBonus = 1;
+    
+    // Only add height bonus if we're moving upward to reward intentional high hits
+    if (ballSpeedY < 0) {
+        currentScore += heightBonus;
     }
+    
+    // Update display with rounded score
+    document.getElementById('score').textContent = Math.floor(currentScore);
 }
 
 function createScorePopup(x, y, text) {
@@ -338,21 +340,46 @@ function createScorePopup(x, y, text) {
 }
 
 function updateMultiplier() {
+    const currentTime = Date.now();
+    const timeSinceLastHit = currentTime - lastHitTime;
+    lastHitTime = currentTime;
+    
+    // Reset combo if hits are too far apart
+    if (timeSinceLastHit > QUICK_HIT_THRESHOLD && consecutiveHits > 0) {
+        resetMultiplier();
+        return;
+    }
+    
     consecutiveHits++;
-    if (consecutiveHits >= COMBO_THRESHOLD) {
-        const newMultiplier = Math.min(Math.floor(consecutiveHits / COMBO_THRESHOLD), MAX_MULTIPLIER);
-        if (newMultiplier > scoreMultiplier) {
-            scoreMultiplier = newMultiplier;
-            showComboText();
-            updateMultiplierDisplay();
-        }
+    
+    // Different multiplier thresholds with corresponding rewards
+    if (consecutiveHits === 5) {
+        scoreMultiplier = 2;
+        showComboText("2x Combo!");
+        updateMultiplierDisplay();
+        playSound('combo-milestone');
+    } else if (consecutiveHits === 10) {
+        scoreMultiplier = 3;
+        showComboText("3x Super Combo!");
+        updateMultiplierDisplay();
+        playSound('combo-milestone');
+    } else if (consecutiveHits === 15) {
+        scoreMultiplier = 4;
+        showComboText("4x ULTRA COMBO!");
+        updateMultiplierDisplay();
+        playSound('combo-milestone');
+    } else if (consecutiveHits % 5 === 0) {
+        // Small bonus points for maintaining a combo
+        const bonusPoints = Math.min(5, consecutiveHits / 5) * scoreMultiplier;
+        currentScore += bonusPoints;
+        createScorePopup(ballX, ballY, `+${bonusPoints} Combo!`);
     }
 }
 
-function showComboText() {
+function showComboText(text) {
     const comboText = document.createElement('div');
     comboText.className = 'combo-text';
-    comboText.textContent = `${consecutiveHits}x Combo!`;
+    comboText.textContent = text;
     comboText.style.left = ballX + 'px';
     comboText.style.top = (ballY - 40) + 'px';
     gameArea.appendChild(comboText);
@@ -387,87 +414,99 @@ function resetMultiplier() {
     }
 }
 
-// Update collision detection to include multiplier
+// Update collision detection to include new scoring
 function checkCollision() {
     const ballRect = ball.getBoundingClientRect();
     const paddleRect = paddleCursor.getBoundingClientRect();
     const gameRect = gameArea.getBoundingClientRect();
-
-    // Calculate actual paddle hitbox (center portion of the paddle image)
-    const actualPaddleTop = paddleRect.top + (paddleRect.height - PADDLE_HEIGHT) / 2;
-    const actualPaddleLeft = paddleRect.left + (paddleRect.width - PADDLE_WIDTH) / 2;
     
-    // Check collision with actual paddle area
-    const ballBottom = ballRect.bottom;
-    const ballTop = ballRect.top;
-    const ballRight = ballRect.right;
-    const ballLeft = ballRect.left;
-    
-    if (ballBottom >= actualPaddleTop &&
-        ballTop <= actualPaddleTop + PADDLE_HEIGHT &&
-        ballRight >= actualPaddleLeft &&
-        ballLeft <= actualPaddleLeft + PADDLE_WIDTH) {
+    // Use the full paddle dimensions for collision
+    if (ballRect.bottom >= paddleRect.top &&
+        ballRect.top <= paddleRect.bottom &&
+        ballRect.right >= paddleRect.left &&
+        ballRect.left <= paddleRect.right) {
         
-        // Ensure the ball bounces off the top surface of the paddle
-        if (ballBottom - actualPaddleTop <= 10) {
-            // Visual and sound effects
-            paddleCursor.classList.add('hit');
-            ball.classList.add('bounce');
-            playSound('paddle-hit');
-            
-            // Create hit effect at collision point
-            const hitX = ballRect.left - gameRect.left + BALL_SIZE / 2;
-            const hitY = actualPaddleTop - gameRect.top;
-            createHitEffect(hitX, hitY);
-            
-            // Enhanced particle effects for flat surface collision
-            for (let i = 0; i < 3; i++) {
-                setTimeout(() => {
-                    createParticleExplosion(
-                        hitX,
-                        hitY,
-                        4
-                    );
-                }, i * 50);
-            }
-            
-            setTimeout(() => {
-                paddleCursor.classList.remove('hit');
-                ball.classList.remove('bounce');
-            }, 200);
-
-            // Calculate bounce angle based on where the ball hits the paddle
-            const hitPoint = (ballRect.left + BALL_SIZE / 2 - actualPaddleLeft) / PADDLE_WIDTH;
-            const normalizedHitX = (hitPoint * 2) - 1; // Convert to -1 to 1 range
-            const baseAngle = normalizedHitX * Math.PI / 4; // Max 45 degree bounce
-            
-            const speed = Math.sqrt(ballSpeedX * ballSpeedX + ballSpeedY * ballSpeedY);
-            const newSpeed = Math.min(speed + bounceSpeedIncrease, maxSpeed);
-            
-            // Add subtle vertical influence from paddle movement
-            const paddleInfluence = paddleVelocityY * 0.3;
-            
-            ballSpeedX = Math.sin(baseAngle) * newSpeed;
-            ballSpeedY = -Math.abs(Math.cos(baseAngle) * newSpeed) + paddleInfluence;
-            
-            // Ensure the ball moves upward
-            if (ballSpeedY > 0) ballSpeedY = -ballSpeedY;
-            
-            // Prevent ball from getting stuck
-            ballY = actualPaddleTop - gameRect.top - BALL_SIZE - 1;
-
-            // Update multiplier on successful hit
-            updateMultiplier();
+        // Calculate base points based on position on paddle
+        const hitPoint = (ballRect.left + BALL_SIZE / 2 - paddleRect.left) / paddleRect.width;
+        const centerDistance = Math.abs(0.5 - hitPoint);
+        
+        // More points for hitting with the edges of the paddle (harder to do)
+        let basePoints = centerDistance > 0.4 ? 5 : 2;
+        
+        // Add small bonus for paddle movement (skill shot)
+        if (Math.abs(paddleVelocityY) > 5) {
+            basePoints += 1;
         }
+        
+        // Calculate final points with multiplier
+        const hitPoints = basePoints * scoreMultiplier;
+        currentScore += hitPoints;
+        createScorePopup(ballX, ballY, `+${hitPoints}`);
+        
+        // Visual and sound effects
+        paddleCursor.classList.add('hit');
+        ball.classList.add('bounce');
+        playSound('paddle-hit');
+        
+        // Create hit effect at collision point
+        const hitX = ballRect.left - gameRect.left + BALL_SIZE / 2;
+        const hitY = paddleRect.top - gameRect.top;
+        createHitEffect(hitX, hitY);
+        
+        // Enhanced particle effects
+        for (let i = 0; i < 3; i++) {
+            setTimeout(() => {
+                createParticleExplosion(hitX, hitY, 4);
+            }, i * 50);
+        }
+        
+        setTimeout(() => {
+            paddleCursor.classList.remove('hit');
+            ball.classList.remove('bounce');
+        }, 200);
+        
+        // Calculate bounce angle based on where the ball hits the paddle
+        const normalizedHitX = (hitPoint * 2) - 1; // Convert to -1 to 1 range
+        const baseAngle = normalizedHitX * Math.PI / 4; // Max 45 degree bounce
+        
+        const speed = Math.sqrt(ballSpeedX * ballSpeedX + ballSpeedY * ballSpeedY);
+        const newSpeed = Math.min(speed + bounceSpeedIncrease, maxSpeed);
+        
+        // Add subtle vertical influence from paddle movement
+        const paddleInfluence = paddleVelocityY * 0.3;
+        
+        ballSpeedX = Math.sin(baseAngle) * newSpeed;
+        ballSpeedY = -Math.abs(Math.cos(baseAngle) * newSpeed) + paddleInfluence;
+        
+        // Ensure the ball moves upward
+        if (ballSpeedY > 0) ballSpeedY = -ballSpeedY;
+        
+        // Prevent ball from getting stuck
+        ballY = paddleRect.top - gameRect.top - BALL_SIZE - 1;
+        
+        // Update multiplier on successful hit
+        updateMultiplier();
+        
     } else if (ballY + BALL_SIZE >= gameArea.offsetHeight) {
         // Reset multiplier on miss
         resetMultiplier();
     }
 
-    // Enhanced wall collisions with effects
+    // Wall collisions with bonus points
     if (ballX <= 0 || ballX + BALL_SIZE >= gameArea.offsetWidth) {
-        ballSpeedX = -ballSpeedX * 0.98; // Slight speed loss on wall hits
+        ballSpeedX = -ballSpeedX * 0.98;
         ballX = ballX <= 0 ? 0 : gameArea.offsetWidth - BALL_SIZE;
+        
+        // Small bonus for wall hits
+        if (scoreMultiplier > 1) {
+            const wallBonus = 2 * scoreMultiplier;
+            currentScore += wallBonus;
+            createScorePopup(
+                ballX + (ballX <= 0 ? 0 : BALL_SIZE),
+                ballY + BALL_SIZE/2,
+                `+${wallBonus}`
+            );
+        }
         
         createParticleExplosion(
             ballX + (ballX <= 0 ? 0 : BALL_SIZE),
@@ -478,8 +517,19 @@ function checkCollision() {
     }
 
     if (ballY <= 0) {
-        ballSpeedY = -ballSpeedY * 0.98; // Slight speed loss on ceiling hits
+        ballSpeedY = -ballSpeedY * 0.98;
         ballY = 0;
+        
+        // Bonus points for ceiling hits (requires skill)
+        if (scoreMultiplier > 1) {
+            const ceilingBonus = 3 * scoreMultiplier;
+            currentScore += ceilingBonus;
+            createScorePopup(
+                ballX + BALL_SIZE/2,
+                0,
+                `+${ceilingBonus}`
+            );
+        }
         
         createParticleExplosion(
             ballX + BALL_SIZE/2,

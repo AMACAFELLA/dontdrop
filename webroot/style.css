@@ -1189,8 +1189,8 @@ canvas {
 
 /* Paddle Cursor */
 .paddle-cursor {
-  width: 200px; /* Match PADDLE_WIDTH */
-  height: 30px; /* Adjust height to make it look less squeezed */
+  width: 120px;  /* Reduced from 200px */
+  height: 10px;  /* Reduced from 30px */
   background: url('assets/paddle.png') no-repeat center center;
   background-size: 100% 100%; /* Ensure image fills the hitbox exactly */
   position: absolute;
