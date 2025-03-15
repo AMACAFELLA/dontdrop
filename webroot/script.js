@@ -221,8 +221,8 @@ function handleTouchMove(e) {
 }
 
 // Update paddle dimensions
-const PADDLE_WIDTH = 300;
-const PADDLE_HEIGHT = 40;
+const PADDLE_WIDTH = 200; // Actual visible width of paddle
+const PADDLE_HEIGHT = 15; // Actual visible height of paddle
 const BALL_SIZE = 50;
 
 function updatePaddlePosition(x, y) {
@@ -288,20 +288,18 @@ function createHitEffect(x, y) {
     ripple.style.top = y + 'px';
     gameArea.appendChild(ripple);
     
-    // Create particle burst
+    // Create single particle burst
     const particleHit = document.createElement('div');
     particleHit.className = 'particle-hit';
     particleHit.style.left = x + 'px';
     particleHit.style.top = y + 'px';
-    particleHit.style.width = '50px';
-    particleHit.style.height = '50px';
     gameArea.appendChild(particleHit);
     
     // Remove elements after animation
     setTimeout(() => {
         ripple.remove();
         particleHit.remove();
-    }, 800);
+    }, 500);
 }
 
 // Scoring system variables
@@ -354,13 +352,13 @@ function updateMultiplier() {
 function showComboText() {
     const comboText = document.createElement('div');
     comboText.className = 'combo-text';
-    comboText.textContent = `${scoreMultiplier}x COMBO!`;
-    comboText.style.left = '50%';
-    comboText.style.top = '50%';
-    comboText.style.transform = 'translate(-50%, -50%)';
+    comboText.textContent = `${consecutiveHits}x Combo!`;
+    comboText.style.left = ballX + 'px';
+    comboText.style.top = (ballY - 40) + 'px';
     gameArea.appendChild(comboText);
     
-    setTimeout(() => comboText.remove(), 1000);
+    // Remove after animation
+    setTimeout(() => comboText.remove(), 500);
 }
 
 function updateMultiplierDisplay() {
@@ -395,14 +393,23 @@ function checkCollision() {
     const paddleRect = paddleCursor.getBoundingClientRect();
     const gameRect = gameArea.getBoundingClientRect();
 
-    // Ball-paddle collision with flat paddle physics
-    if (ballRect.bottom >= paddleRect.top &&
-        ballRect.top <= paddleRect.bottom &&
-        ballRect.right >= paddleRect.left &&
-        ballRect.left <= paddleRect.right) {
+    // Calculate actual paddle hitbox (center portion of the paddle image)
+    const actualPaddleTop = paddleRect.top + (paddleRect.height - PADDLE_HEIGHT) / 2;
+    const actualPaddleLeft = paddleRect.left + (paddleRect.width - PADDLE_WIDTH) / 2;
+    
+    // Check collision with actual paddle area
+    const ballBottom = ballRect.bottom;
+    const ballTop = ballRect.top;
+    const ballRight = ballRect.right;
+    const ballLeft = ballRect.left;
+    
+    if (ballBottom >= actualPaddleTop &&
+        ballTop <= actualPaddleTop + PADDLE_HEIGHT &&
+        ballRight >= actualPaddleLeft &&
+        ballLeft <= actualPaddleLeft + PADDLE_WIDTH) {
         
         // Ensure the ball bounces off the top surface of the paddle
-        if (ballRect.bottom - paddleRect.top <= 10) {
+        if (ballBottom - actualPaddleTop <= 10) {
             // Visual and sound effects
             paddleCursor.classList.add('hit');
             ball.classList.add('bounce');
@@ -410,7 +417,7 @@ function checkCollision() {
             
             // Create hit effect at collision point
             const hitX = ballRect.left - gameRect.left + BALL_SIZE / 2;
-            const hitY = paddleRect.top - gameRect.top;
+            const hitY = actualPaddleTop - gameRect.top;
             createHitEffect(hitX, hitY);
             
             // Enhanced particle effects for flat surface collision
@@ -429,15 +436,16 @@ function checkCollision() {
                 ball.classList.remove('bounce');
             }, 200);
 
-            // Use the existing hitX for angle calculation
-            const normalizedHitX = (hitX / paddleRect.width) * 2 - 1; // -1 to 1
-            const baseAngle = normalizedHitX * Math.PI / 4; // Max 45 degree bounce for flatter trajectories
+            // Calculate bounce angle based on where the ball hits the paddle
+            const hitPoint = (ballRect.left + BALL_SIZE / 2 - actualPaddleLeft) / PADDLE_WIDTH;
+            const normalizedHitX = (hitPoint * 2) - 1; // Convert to -1 to 1 range
+            const baseAngle = normalizedHitX * Math.PI / 4; // Max 45 degree bounce
             
             const speed = Math.sqrt(ballSpeedX * ballSpeedX + ballSpeedY * ballSpeedY);
             const newSpeed = Math.min(speed + bounceSpeedIncrease, maxSpeed);
             
             // Add subtle vertical influence from paddle movement
-            const paddleInfluence = paddleVelocityY * 0.3; // Reduced influence for flatter bounces
+            const paddleInfluence = paddleVelocityY * 0.3;
             
             ballSpeedX = Math.sin(baseAngle) * newSpeed;
             ballSpeedY = -Math.abs(Math.cos(baseAngle) * newSpeed) + paddleInfluence;
@@ -446,7 +454,7 @@ function checkCollision() {
             if (ballSpeedY > 0) ballSpeedY = -ballSpeedY;
             
             // Prevent ball from getting stuck
-            ballY = paddleRect.top - gameRect.top - BALL_SIZE - 1;
+            ballY = actualPaddleTop - gameRect.top - BALL_SIZE - 1;
 
             // Update multiplier on successful hit
             updateMultiplier();
@@ -482,15 +490,22 @@ function checkCollision() {
     }
 }
 
+let lastTrailTime = 0;
+
 function createBallTrail() {
+    // Limit trail creation frequency
+    const now = performance.now();
+    if (now - lastTrailTime < 50) return; // Only create trail every 50ms
+    lastTrailTime = now;
+    
     const trail = document.createElement('div');
     trail.className = 'ball-trail';
     trail.style.left = ballX + 'px';
     trail.style.top = ballY + 'px';
     gameArea.appendChild(trail);
     
-    // Remove trail element after animation
-    setTimeout(() => trail.remove(), 500);
+    // Remove trail after animation
+    setTimeout(() => trail.remove(), 200);
 }
 
 function gameLoop() {
@@ -907,13 +922,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Particle System
 function createParticleExplosion(x, y, count) {
+    // Limit maximum particles for performance
+    count = Math.min(count, 8);
+    
     for (let i = 0; i < count; i++) {
         const particle = document.createElement('div');
         particle.className = 'particle';
         gameArea.appendChild(particle);
         
         const angle = (Math.random() * Math.PI * 2);
-        const velocity = 2 + Math.random() * 3;
+        const velocity = 2 + Math.random() * 2;
         const vx = Math.cos(angle) * velocity;
         const vy = Math.sin(angle) * velocity;
         let lifetime = 0;
@@ -921,22 +939,24 @@ function createParticleExplosion(x, y, count) {
         particle.style.left = x + 'px';
         particle.style.top = y + 'px';
         
-        function updateParticle() {
-            lifetime += 1/60;
-            if (lifetime > 1) {
+        const startTime = performance.now();
+        const duration = 500; // 0.5 seconds
+        
+        function updateParticle(currentTime) {
+            const elapsed = currentTime - startTime;
+            if (elapsed >= duration) {
                 particle.remove();
                 return;
             }
             
+            lifetime = elapsed / duration;
             const newX = x + vx * lifetime * 60;
             const newY = y + vy * lifetime * 60;
             const opacity = 1 - lifetime;
             const scale = 1 - lifetime;
             
-            particle.style.left = newX + 'px';
-            particle.style.top = newY + 'px';
+            particle.style.transform = `translate(${newX - x}px, ${newY - y}px) scale(${scale})`;
             particle.style.opacity = opacity;
-            particle.style.transform = `scale(${scale})`;
             
             requestAnimationFrame(updateParticle);
         }
