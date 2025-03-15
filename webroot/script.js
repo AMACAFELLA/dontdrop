@@ -244,10 +244,13 @@ function updatePaddlePosition(x, y) {
 function startGame(e) {
     if (!gameStarted) {
         e.preventDefault();
+        e.stopPropagation();
         gameStarted = true;
-        instructions.style.display = 'none';
+        if (instructions) {
+            instructions.style.display = 'none';
+        }
         
-        // Launch ball at random angle
+        // Launch ball at random angle only when clicked
         const angle = (Math.random() * 60 + 60) * (Math.PI / 180);
         ballSpeedX = Math.cos(angle) * baseSpeed;
         ballSpeedY = -Math.sin(angle) * baseSpeed;
@@ -523,7 +526,20 @@ function gameOver() {
     gameStarted = false;
     playSound('game-over');
     
+    // Stop game loop
+    if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+        animationFrameId = null;
+    }
+    
+    // Hide paddle cursor and ball
+    if (paddleCursor) {
+        paddleCursor.style.display = 'none';
+    }
+    ball.style.visibility = 'hidden';
+    
     // Create game over overlay
+    const gameOverContainer = document.getElementById('game-over-container');
     const overlay = document.createElement('div');
     overlay.className = 'game-over-overlay';
     overlay.innerHTML = `
@@ -531,10 +547,25 @@ function gameOver() {
             <h2>Game Over!</h2>
             <div class="final-score">Score: ${currentScore}</div>
             ${currentScore > highScore ? '<div class="new-highscore">New High Score!</div>' : ''}
-            <button class="menu-button" onclick="resetGame()">Play Again</button>
+            <div class="game-over-buttons">
+                <button class="menu-button primary" id="play-again-button">Play Again</button>
+                <button class="menu-button" id="back-to-menu-button">Back to Menu</button>
+            </div>
         </div>
     `;
-    gameArea.appendChild(overlay);
+    gameOverContainer.appendChild(overlay);
+    
+    // Add event listeners
+    const playAgainButton = overlay.querySelector('#play-again-button');
+    const backToMenuButton = overlay.querySelector('#back-to-menu-button');
+    
+    if (playAgainButton) {
+        playAgainButton.addEventListener('click', resetGame);
+    }
+    
+    if (backToMenuButton) {
+        backToMenuButton.addEventListener('click', backToMenu);
+    }
     
     // Animate overlay
     requestAnimationFrame(() => {
@@ -579,30 +610,27 @@ function gameOver() {
             data: { finalScore }
         });
     }
-    
-    resetBall();
-    currentScore = 0;
-    document.getElementById('score').textContent = '0';
-    
-    // Show game over message
-    instructions.textContent = 'Game Over! Click to play again';
-    instructions.style.display = 'block';
-    
-    // Remove game over effect after animation
-    setTimeout(() => {
-        gameArea.classList.remove('game-over');
-    }, 1000);
+
+    // Reset cursor and prevent game area interactions
+    gameArea.style.cursor = 'default';
+    gameArea.style.pointerEvents = 'none';
 }
 
 function resetGame() {
-    // Remove game over overlay
-    const overlay = document.querySelector('.game-over-overlay');
-    if (overlay) {
-        overlay.classList.remove('active');
-        setTimeout(() => overlay.remove(), 500);
+    // Remove game over overlay immediately
+    const gameOverContainer = document.getElementById('game-over-container');
+    if (gameOverContainer) {
+        gameOverContainer.innerHTML = '';
     }
     
+    // Show paddle cursor and ball again
+    if (paddleCursor) {
+        paddleCursor.style.display = 'block';
+    }
+    ball.style.visibility = 'visible';
+    
     // Reset game state
+    gameStarted = false;
     resetBall();
     resetMultiplier();
     currentScore = 0;
@@ -610,8 +638,69 @@ function resetGame() {
     gameArea.classList.remove('game-over');
     
     // Show instructions
-    instructions.textContent = 'Click to start!';
-    instructions.style.display = 'block';
+    if (instructions) {
+        instructions.textContent = 'Click to start!';
+        instructions.style.display = 'block';
+    }
+    
+    // Reset cursor and enable game area interactions
+    gameArea.style.cursor = 'none';
+    gameArea.style.pointerEvents = 'auto';
+    
+    // Re-add event listeners
+    gameArea.removeEventListener('mousemove', handleMouseMove);
+    gameArea.removeEventListener('touchmove', handleTouchMove);
+    gameArea.removeEventListener('mousedown', startGame);
+    gameArea.removeEventListener('touchstart', startGame);
+    
+    gameArea.addEventListener('mousemove', handleMouseMove);
+    gameArea.addEventListener('touchmove', handleTouchMove, { passive: true });
+    gameArea.addEventListener('mousedown', startGame);
+    gameArea.addEventListener('touchstart', startGame, { passive: true });
+
+    // Reset cursor position to center and update ball position
+    cursorX = gameArea.offsetWidth / 2;
+    cursorY = gameArea.offsetHeight - 100;
+    lastCursorY = cursorY;
+    updatePaddlePosition(cursorX, cursorY);
+    
+    // Restart game loop if it was stopped
+    if (!animationFrameId) {
+        animationFrameId = requestAnimationFrame(gameLoop);
+    }
+}
+
+function backToMenu() {
+    // Remove game over overlay
+    const gameOverContainer = document.getElementById('game-over-container');
+    gameOverContainer.innerHTML = '';
+    
+    // Clean up game screen
+    if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+        animationFrameId = null;
+    }
+    
+    // Hide paddle cursor and show ball
+    if (paddleCursor) {
+        paddleCursor.style.display = 'none';
+    }
+    ball.style.visibility = 'visible';
+    
+    // Reset game state
+    gameStarted = false;
+    resetBall();
+    resetMultiplier();
+    currentScore = 0;
+    document.getElementById('score').textContent = '0';
+    gameArea.classList.remove('game-over');
+    
+    // Reset cursor and re-enable game area interactions
+    gameArea.style.cursor = 'default';
+    gameArea.style.pointerEvents = 'auto';
+    
+    // Switch to menu screen
+    showScreen('menu');
 }
 
 // Modal Management
