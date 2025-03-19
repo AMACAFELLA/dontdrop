@@ -316,7 +316,7 @@ canvas {
 #paddle {
   width: 200px;
   height: 30px;
-  background: url('assets/paddle.png') no-repeat center center;
+  /* Removed hardcoded background image */
   background-size: contain;
   position: absolute;
   bottom: 30px;
@@ -330,8 +330,9 @@ canvas {
 #ball {
   width: 50px;
   height: 50px;
-  background: url('assets/ball.png') no-repeat center center;
   background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center center;
   border-radius: 50%;
   position: absolute;
   pointer-events: none;
@@ -1047,16 +1048,14 @@ canvas {
 
 .ball-trail {
   position: absolute;
-  width: 40px;
-  height: 40px;
-  background: radial-gradient(circle, var(--primary) 0%, transparent 70%);
-  border-radius: 50%;
+  width: 50px;
+  height: 50px;
+  /* Removed hardcoded background image */
+  background-size: contain;
   pointer-events: none;
-  opacity: 0.15;
-  will-change: transform, opacity;
-  animation: fadeOut 0.2s ease-out forwards;
-  filter: blur(1px);
-  z-index: 5;
+  opacity: 0;
+  filter: brightness(1.5) blur(2px);
+  animation: fadeOut 0.5s ease-out forwards;
 }
 
 @keyframes fadeOut {
@@ -1095,8 +1094,9 @@ canvas {
 .paddle-cursor {
   width: 120px;
   height: 25px;
-  background: url('assets/paddle.png') no-repeat center center;
   background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center center;
   position: absolute;
   pointer-events: none;
   z-index: 100;
@@ -1362,7 +1362,7 @@ canvas {
   position: absolute;
   width: 50px;
   height: 50px;
-  background: url('assets/ball.png') no-repeat center center;
+  /* Removed hardcoded background image */
   background-size: contain;
   pointer-events: none;
   opacity: 0;
@@ -2630,4 +2630,230 @@ canvas {
   .leaderboard-container {
     margin: 0 10px;
   }
+}
+
+/* Weapon Selection Screen */
+#weapon-selection-screen {
+    display: none;
+    background: linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%);
+    color: #ffffff;
+    padding: 20px;
+    max-height: 100vh;
+    overflow: hidden;
+}
+
+#weapon-selection-screen.active {
+    display: block;
+}
+
+.weapon-selection-content {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+    overflow-y: auto;
+    max-height: calc(100vh - 100px); /* Adjust for header space */
+    scrollbar-width: thin;
+    scrollbar-color: #ff4500 rgba(255, 255, 255, 0.1);
+    scroll-behavior: smooth;
+}
+
+.weapon-selection-content::-webkit-scrollbar {
+    width: 8px;
+}
+
+.weapon-selection-content::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+}
+
+.weapon-selection-content::-webkit-scrollbar-thumb {
+    background-color: #ff4500;
+    border-radius: 10px;
+}
+
+.weapon-section {
+    margin-bottom: 40px;
+}
+
+.weapon-section h3 {
+    font-size: 24px;
+    margin-bottom: 20px;
+    color: #ff4500;
+    text-align: center;
+}
+
+.weapon-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+    padding: 20px;
+}
+
+.weapon-item {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    padding: 15px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+}
+
+.weapon-item:hover {
+    transform: translateY(-5px);
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.weapon-item.selected {
+    background: rgba(255, 69, 0, 0.2);
+    border: 2px solid #ff4500;
+}
+
+.weapon-item.locked {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.weapon-item img {
+    width: 100px;
+    height: 100px;
+    object-fit: contain;
+    margin-bottom: 10px;
+}
+
+.weapon-info {
+    width: 100%;
+}
+
+.weapon-info h3 {
+    font-size: 18px;
+    margin: 0 0 5px 0;
+    color: #ffffff;
+}
+
+.weapon-info p {
+    font-size: 14px;
+    margin: 0 0 10px 0;
+    color: #cccccc;
+}
+
+.weapon-stats {
+    display: flex;
+    justify-content: space-around;
+    font-size: 12px;
+    color: #ff4500;
+}
+
+.weapon-stats span {
+    background: rgba(255, 69, 0, 0.1);
+    padding: 3px 8px;
+    border-radius: 4px;
+}
+
+#start-game-with-weapons-btn {
+    display: block;
+    margin: 40px auto;
+    padding: 15px 40px;
+    font-size: 20px;
+}
+
+.instruction-icon.weapon::before {
+    content: "";
+    position: absolute;
+    width: 70%;
+    height: 70%;
+    top: 15%;
+    left: 15%;
+    background: linear-gradient(135deg, #ff4500, #ff7e1c);
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 2L1 21h22L12 2zm0 6l7.53 13H4.47L12 8z'/%3E%3C/svg%3E");
+    mask-size: contain;
+    mask-repeat: no-repeat;
+    mask-position: center;
+    -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 2L1 21h22L12 2zm0 6l7.53 13H4.47L12 8z'/%3E%3C/svg%3E");
+    -webkit-mask-size: contain;
+    -webkit-mask-repeat: no-repeat;
+    -webkit-mask-position: center;
+    animation: weaponIconAnim 2s ease-in-out infinite;
+}
+
+@keyframes weaponIconAnim {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.1) rotate(5deg); }
+    100% { transform: scale(1); }
+}
+
+/* Responsive styles for weapon selection */
+@media (max-width: 768px) {
+    .weapon-grid {
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+        gap: 10px;
+        padding: 10px;
+    }
+    
+    .weapon-section h3 {
+        font-size: 20px;
+        margin-bottom: 15px;
+    }
+    
+    .weapon-item img {
+        width: 70px;
+        height: 70px;
+    }
+    
+    .weapon-info h3 {
+        font-size: 16px;
+    }
+    
+    .weapon-info p {
+        font-size: 12px;
+        margin-bottom: 5px;
+    }
+    
+    .weapon-stats {
+        font-size: 10px;
+    }
+    
+    .weapon-stats span {
+        padding: 2px 5px;
+    }
+    
+    .weapon-selection-content {
+        padding: 10px;
+        max-height: calc(100vh - 80px);
+    }
+    
+    #start-game-with-weapons-btn {
+        margin: 20px auto;
+        padding: 10px 30px;
+        font-size: 16px;
+    }
+}
+
+.screen-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 20px;
+    background: rgba(0, 0, 0, 0.2);
+    margin-bottom: 20px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Special header styling for weapon selection screen */
+#weapon-selection-screen .screen-header {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: linear-gradient(90deg, #1a1a1a 0%, #2a2a2a 100%);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+}
+
+.screen-header h2 {
+    color: #ff4500;
+    margin: 0;
+    font-size: 22px;
 }

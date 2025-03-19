@@ -11,6 +11,98 @@ let retryAttempts = 0;
 const MAX_RETRY_ATTEMPTS = 3;
 const RETRY_DELAY = 1000; // 1 second
 
+// Weapon system
+const weapons = {
+  paddles: {
+    default: {
+      name: 'Default Paddle',
+      image: 'assets/paddle.png',
+      bounceHeight: 1.0,
+      speedMultiplier: 1.0,
+      unlockScore: 0,
+      specialPower: null
+    },
+    blue: {
+      name: 'Blue Paddle',
+      image: 'assets/paddles/blue-paddle.png',
+      bounceHeight: 1.2,
+      speedMultiplier: 1.1,
+      unlockScore: 100,
+      specialPower: "extraBounce" // Extra bounce height
+    },
+    orange: {
+      name: 'Orange Paddle',
+      image: 'assets/paddles/orange-paddle.png',
+      bounceHeight: 0.8,
+      speedMultiplier: 1.3,
+      unlockScore: 200,
+      specialPower: "speedBoost" // Extra horizontal speed
+    },
+    black: {
+      name: 'Black Paddle',
+      image: 'assets/paddles/black-paddle.png',
+      bounceHeight: 1.5,
+      speedMultiplier: 0.8,
+      unlockScore: 300,
+      specialPower: "doublePoints" // Double points on hit
+    },
+    darkblue: {
+      name: 'Dark Blue Paddle',
+      image: 'assets/paddles/darkblue-paddle.png',
+      bounceHeight: 1.3,
+      speedMultiplier: 1.2,
+      unlockScore: 400,
+      specialPower: "comboExtender" // Extends combo duration
+    }
+  },
+  balls: {
+    default: {
+      name: 'Default Ball',
+      image: 'assets/ball.png',
+      speedMultiplier: 1.0,
+      bounceMultiplier: 1.0,
+      unlockScore: 0,
+      gravity: 0.2 // Regular gravity
+    },
+    blue: {
+      name: 'Blue Ball',
+      image: 'assets/balls/blue-paddle-ball.png',
+      speedMultiplier: 1.2,
+      bounceMultiplier: 1.1,
+      unlockScore: 100,
+      gravity: 0.18 // Lower gravity
+    },
+    orange: {
+      name: 'Orange Ball',
+      image: 'assets/balls/orange-paddle-ball.png',
+      speedMultiplier: 1.4,
+      bounceMultiplier: 0.9,
+      unlockScore: 200,
+      gravity: 0.22 // Higher gravity
+    },
+    black: {
+      name: 'Grenade Ball',
+      image: 'assets/balls/black-paddle-granade.png',
+      speedMultiplier: 1.5,
+      bounceMultiplier: 1.3,
+      unlockScore: 300,
+      gravity: 0.25 // High gravity
+    },
+    darkblue: {
+      name: 'Dynamite Ball',
+      image: 'assets/balls/darkblue-paddle-dynamite.png',
+      speedMultiplier: 1.6,
+      bounceMultiplier: 1.4,
+      unlockScore: 400,
+      gravity: 0.15 // Low gravity
+    }
+  }
+};
+
+// Selected weapons
+let selectedPaddle = weapons.paddles.default;
+let selectedBall = weapons.balls.default;
+
 // Keep track of our known reddit username
 let currentUsername = ''; // This will be set by the server with the real Reddit username
 let confirmedUsername = false; // Flag to indicate we have confirmed the username
@@ -71,6 +163,7 @@ let ballX = 0;
 let ballY = 0;
 let ballSpeedX = 0;
 let ballSpeedY = 0;
+const BALL_SIZE = 50; // Ball size in pixels
 const baseSpeed = 5;
 const gravity = 0.2;
 const bounceSpeedIncrease = 0.5;
@@ -116,114 +209,29 @@ function ensureLeaderboardDisplayed() {
 }
 
 function showScreen(screenId) {
-  // Hide all screens
-  document.querySelectorAll('.screen').forEach(screen => {
-    screen.classList.remove('active');
-  });
-  
-  // Show the requested screen
-  const targetScreen = document.getElementById(screenId);
-  if (targetScreen) {
-    targetScreen.classList.add('active');
+    // Hide all screens first
+    document.querySelectorAll('.screen').forEach(screen => {
+        screen.classList.remove('active');
+    });
     
-    // Initialize game if showing game screen
-    if (screenId === 'game-screen') {
-        initGame();
-    }
-    
-    // Handle leaderboard screen specifically
-    if (screenId === 'leaderboard-screen') {
-        console.log("Showing leaderboard screen, ensuring data is displayed");
-        ensureLeaderboardDisplayed();
-    }
-  } else {
-    console.error(`Screen with ID '${screenId}' not found`);
-    }
-}
-
-// Initialize game
-function initGame() {
-  // Get game elements
-    gameArea = document.getElementById('gameArea');
-    ball = document.getElementById('ball');
-    instructions = document.getElementById('instructions');
-
-  if (!gameArea || !ball) {
-    console.error('Game elements not found. Aborting game initialization.');
-    return;
-  }
-
-  // Clear any existing paddle cursors to avoid duplicates
-  const existingPaddle = document.querySelector('.paddle-cursor');
-  if (existingPaddle) {
-    existingPaddle.remove();
-  }
-
-    // Create paddle cursor
-    paddleCursor = document.createElement('div');
-    paddleCursor.className = 'paddle-cursor';
-    gameArea.appendChild(paddleCursor);
-    
-  // Set initial ball position and dimensions
-  ball.style.width = BALL_SIZE + 'px';
-  ball.style.height = BALL_SIZE + 'px';
-  ball.style.visibility = 'visible';
-  
-  // Hide default cursor when over game area
-    gameArea.style.cursor = 'none';
-
-  // Remove existing event listeners to prevent duplicates
-  gameArea.removeEventListener('mousemove', handleMouseMove);
-  gameArea.removeEventListener('touchmove', handleTouchMove);
-  gameArea.removeEventListener('mousedown', startGame);
-  gameArea.removeEventListener('touchstart', startGame);
-  
-  // Add event listeners
-    gameArea.addEventListener('mousemove', handleMouseMove);
-  gameArea.addEventListener('touchmove', handleTouchMove, { passive: false });
-    gameArea.addEventListener('mousedown', startGame);
-  gameArea.addEventListener('touchstart', startGame, { passive: false });
-
-  // Position paddle and ball initially
-    resetBall();
-  
-  // Reset game state
-  gameStarted = false;
-  currentScore = 0;
-  document.getElementById('score').textContent = '0';
-  scoreMultiplier = 1;
-  consecutiveHits = 0;
-  
-  // Update high score display
-  document.getElementById('highScore').textContent = highScore;
-
-  // Cancel any existing animation frame
-  if (animationFrameId) {
-    cancelAnimationFrame(animationFrameId);
-  }
-
-    // Start game loop
-  animationFrameId = requestAnimationFrame(gameLoop);
-  
-  // Show instruction message
-  if (instructions) {
-    // Use the authenticated Reddit username in the instructions
-    if (currentUsername) {
-      instructions.innerHTML = `Playing as <span class="username">${currentUsername}</span>. <p>Click to start!</p>`;
+    // Show the requested screen
+    const targetScreen = document.getElementById(screenId);
+    if (targetScreen) {
+        targetScreen.classList.add('active');
+        
+        // Initialize game if showing game screen
+        if (screenId === 'game-screen') {
+            initGame();
+        }
+        
+        // Handle leaderboard screen specifically
+        if (screenId === 'leaderboard-screen') {
+            console.log("Showing leaderboard screen, ensuring data is displayed");
+            ensureLeaderboardDisplayed();
+        }
     } else {
-      // If username is not yet available, show loading state
-      instructions.innerHTML = `<p>Loading Reddit username...</p><p>Click to start!</p>`;
+        console.error(`Screen with ID '${screenId}' not found`);
     }
-    instructions.style.display = 'block';
-  }
-
-  // Initialize karma display
-  const karmaElement = document.getElementById('karma');
-  if (karmaElement) {
-    karmaElement.textContent = karma.toString();
-  }
-  
-  console.log("Game initialized successfully");
 }
 
 // Initialize floating background elements
@@ -257,41 +265,26 @@ function initMenu() {
     initFloatingElements();
     
     // Menu buttons
-  document.getElementById('start-btn').addEventListener('click', () => {
-    showScreen('game-screen');
-  });
-  
+    document.getElementById('start-btn').addEventListener('click', () => {
+        showScreen('game-screen');
+    });
+    
     document.getElementById('how-to-play-btn').addEventListener('click', showHowToPlayModal);
-  
-  // Leaderboard button
-  document.getElementById('leaderboard-btn').addEventListener('click', () => {
-    console.log("Leaderboard button clicked, showing leaderboard screen");
-    showScreen('leaderboard-screen');
-    // This is now handled by the showScreen function through ensureLeaderboardDisplayed
-  });
-  
-  document.getElementById('back-from-leaderboard-btn').addEventListener('click', () => {
-    showScreen('menu-screen');
-  });
-  
-  document.getElementById('play-from-leaderboard-btn').addEventListener('click', () => {
-    showScreen('game-screen');
-  });
-  
-  // Achievements buttons
-  document.getElementById('badges-btn').addEventListener('click', () => {
-    showScreen('badges-screen');
-  });
-  
-  document.getElementById('back-from-badges-btn').addEventListener('click', () => {
-    showScreen('menu-screen');
-  });
-
-  // Modal
-  const modal = document.getElementById('how-to-play-modal');
-  document.querySelector('.modal-close')?.addEventListener('click', () => {
-    modal.classList.remove('active');
-  });
+    
+    // Add weapons selection button
+    const weaponsBtn = document.getElementById('weapons-btn');
+    if (weaponsBtn) {
+        weaponsBtn.addEventListener('click', () => {
+            showWeaponSelection();
+        });
+    }
+    
+    // Leaderboard button
+    document.getElementById('leaderboard-btn').addEventListener('click', () => {
+        console.log("Leaderboard button clicked, showing leaderboard screen");
+        showScreen('leaderboard-screen');
+        // This is now handled by the showScreen function through ensureLeaderboardDisplayed
+    });
 }
 
 // Update handleMouseMove to properly track mouse movement
@@ -330,7 +323,6 @@ function handleTouchMove(e) {
 // Update paddle dimensions
 const PADDLE_WIDTH = 120; // Reduced from 200
 const PADDLE_HEIGHT = 25; // Increased from 10 to match the image height
-const BALL_SIZE = 50;
 
 function updatePaddlePosition(x, y) {
   if (!paddleCursor || !gameArea) return;
@@ -439,13 +431,14 @@ function createHitEffect(x, y) {
     }, 500);
 }
 
-// Scoring system variables
+// Combo system variables
 let scoreMultiplier = 1;
 let consecutiveHits = 0;
 const COMBO_THRESHOLD = 3;
-const MAX_MULTIPLIER = 4;
-const QUICK_HIT_THRESHOLD = 1500; // Time window in ms for quick hits
+const MAX_MULTIPLIER = 5; // Increased max multiplier
+const QUICK_HIT_THRESHOLD = 2000; // Increased time window for maintaining combo
 let lastHitTime = 0;
+let comboTimeoutId = null; // For tracking combo timeout
 
 function updateScore() {
     // Only give height bonus points on specific height thresholds
@@ -471,8 +464,25 @@ function createScorePopup(x, y, text) {
     popup.textContent = text;
     popup.style.left = x + 'px';
     popup.style.top = y + 'px';
+    
+    // Add color based on score value
+    if (text.includes('5x')) {
+        popup.style.color = '#ff5722';
+        popup.style.fontSize = '28px';
+    } else if (text.includes('4x')) {
+        popup.style.color = '#e91e63';
+        popup.style.fontSize = '24px';
+    } else if (text.includes('3x')) {
+        popup.style.color = '#9c27b0';
+        popup.style.fontSize = '22px';
+    } else if (text.includes('2x')) {
+        popup.style.color = '#3f51b5';
+        popup.style.fontSize = '20px';
+    }
+    
     gameArea.appendChild(popup);
     
+    // Remove after animation
     setTimeout(() => popup.remove(), 1000);
 }
 
@@ -481,11 +491,18 @@ function updateMultiplier() {
     const timeSinceLastHit = currentTime - lastHitTime;
     lastHitTime = currentTime;
     
-    // Reset combo if hits are too far apart
-    if (timeSinceLastHit > QUICK_HIT_THRESHOLD && consecutiveHits > 0) {
-        resetMultiplier();
-        return;
+    // Clear any existing combo timeout
+    if (comboTimeoutId) {
+        clearTimeout(comboTimeoutId);
     }
+    
+    // Set timeout to reset combo if no hits occur within threshold
+    comboTimeoutId = setTimeout(() => {
+        if (consecutiveHits > 0) {
+            resetMultiplier();
+            updateComboDisplay();
+        }
+    }, QUICK_HIT_THRESHOLD);
     
     consecutiveHits++;
     
@@ -493,192 +510,185 @@ function updateMultiplier() {
     if (consecutiveHits === 5) {
         scoreMultiplier = 2;
         showComboText("2x Combo!");
-        updateMultiplierDisplay();
         playSound('combo-milestone');
     } else if (consecutiveHits === 10) {
         scoreMultiplier = 3;
         showComboText("3x Super Combo!");
-        updateMultiplierDisplay();
         playSound('combo-milestone');
     } else if (consecutiveHits === 15) {
         scoreMultiplier = 4;
         showComboText("4x ULTRA COMBO!");
-        updateMultiplierDisplay();
         playSound('combo-milestone');
+    } else if (consecutiveHits === 20) {
+        scoreMultiplier = 5;
+        showComboText("5x LEGENDARY COMBO!");
+        playSound('combo-milestone');
+        
+        // Create an epic visual effect for legendary combo
+        createParticleExplosion(ballX + BALL_SIZE/2, ballY + BALL_SIZE/2, 30);
     } else if (consecutiveHits % 5 === 0) {
         // Small bonus points for maintaining a combo
         const bonusPoints = Math.min(5, consecutiveHits / 5) * scoreMultiplier;
         currentScore += bonusPoints;
         createScorePopup(ballX, ballY, `+${bonusPoints} Combo!`);
     }
-}
-
-function showComboText(text) {
-    const comboText = document.createElement('div');
-    comboText.className = 'combo-text';
-    comboText.textContent = text;
-    comboText.style.left = ballX + 'px';
-    comboText.style.top = (ballY - 40) + 'px';
-    gameArea.appendChild(comboText);
     
-    // Remove after animation
-    setTimeout(() => comboText.remove(), 500);
-}
-
-function updateMultiplierDisplay() {
-    let multiplier = document.querySelector('.multiplier');
-    if (!multiplier) {
-        multiplier = document.createElement('div');
-        multiplier.className = 'multiplier';
-        multiplier.innerHTML = `
-            <span>Multiplier</span>
-            <span class="multiplier-value">x${scoreMultiplier}</span>
-        `;
-        gameArea.appendChild(multiplier);
-    }
-    
-    multiplier.querySelector('.multiplier-value').textContent = `x${scoreMultiplier}`;
-    multiplier.classList.add('active');
-    setTimeout(() => multiplier.classList.remove('active'), 300);
+    // Update the combo display
+    updateComboDisplay();
 }
 
 function resetMultiplier() {
+    if (comboTimeoutId) {
+        clearTimeout(comboTimeoutId);
+        comboTimeoutId = null;
+    }
+    
     scoreMultiplier = 1;
     consecutiveHits = 0;
-    const multiplier = document.querySelector('.multiplier');
-    if (multiplier) {
-        multiplier.querySelector('.multiplier-value').textContent = `x${scoreMultiplier}`;
-    }
+    
+    // Update the combo display
+    updateComboDisplay();
 }
 
-// Fix the collision detection to reduce debug logs
+// Check collision detection
 function checkCollision() {
-    if (!ball || !paddleCursor || !gameArea) return;
-    
+    if (!gameStarted || !ball || !paddleCursor) return;
+
     const ballRect = ball.getBoundingClientRect();
     const paddleRect = paddleCursor.getBoundingClientRect();
-    const gameRect = gameArea.getBoundingClientRect();
-    
-    // Use the full paddle dimensions for collision
+
+    // Check for collision
     if (ballRect.bottom >= paddleRect.top &&
-        ballRect.top <= paddleRect.bottom &&
+        ballRect.left <= paddleRect.right &&
         ballRect.right >= paddleRect.left &&
-        ballRect.left <= paddleRect.right) {
+        ballRect.top <= paddleRect.bottom) {
         
-        // Calculate base points based on position on paddle
-        const hitPoint = (ballRect.left + (ballRect.width / 2) - paddleRect.left) / paddleRect.width;
-        const centerDistance = Math.abs(0.5 - hitPoint);
-        
-        // More points for hitting with the edges of the paddle (harder to do)
-        let basePoints = centerDistance > 0.4 ? 5 : 2;
-        
-        // Add small bonus for paddle movement (skill shot)
-        if (Math.abs(paddleVelocityY) > 5) {
-            basePoints += 1;
+        // Log current weapon status on first hit (for debugging purposes)
+        if (consecutiveHits === 0) {
+            console.log("First hit with weapons:", 
+                selectedPaddle.name, 
+                selectedBall.name, 
+                "Current background images:", 
+                paddleCursor.style.backgroundImage, 
+                ball.style.backgroundImage);
         }
         
-        // Calculate final points with multiplier
-        const hitPoints = basePoints * scoreMultiplier;
-        currentScore += hitPoints;
-        createScorePopup(ballX, ballY, `+${hitPoints}`);
+        // Calculate hit position relative to paddle center
+        const paddleCenter = paddleRect.left + paddleRect.width / 2;
+        const hitPosition = (ballRect.left + ballRect.width / 2 - paddleCenter) / (paddleRect.width / 2);
         
-        // Visual and sound effects
-        paddleCursor.classList.add('hit');
-        ball.classList.add('bounce');
-        playSound('paddle-hit');
+        // Apply weapon-specific mechanics
+        const paddleBounceHeight = selectedPaddle.bounceHeight;
+        const paddleSpeedMultiplier = selectedPaddle.speedMultiplier;
+        const ballSpeedMultiplier = selectedBall.speedMultiplier;
+        const ballBounceMultiplier = selectedBall.bounceMultiplier;
         
-        // Create hit effect at collision point
-        const hitX = ballRect.left - gameRect.left + (ballRect.width / 2);
-        const hitY = paddleRect.top - gameRect.top;
-        createHitEffect(hitX, hitY);
+        // Calculate bounce angle based on hit position and weapon properties
+        const bounceAngle = hitPosition * Math.PI / 3 * paddleBounceHeight;
         
-        // Enhanced particle effects
-        for (let i = 0; i < 3; i++) {
-            setTimeout(() => {
-                createParticleExplosion(hitX, hitY, 4);
-            }, i * 50);
+        // Calculate new ball speed with weapon multipliers
+        const newSpeed = baseSpeed * paddleSpeedMultiplier * ballSpeedMultiplier;
+        
+        // Apply new velocity with weapon properties
+        ballSpeedX = Math.sin(bounceAngle) * newSpeed;
+        ballSpeedY = -Math.cos(bounceAngle) * newSpeed * ballBounceMultiplier;
+        
+        // Apply special paddle powers
+        applyPaddlePower();
+        
+        // Ensure ball doesn't get stuck
+        if (Math.abs(ballSpeedX) < 1) {
+            ballSpeedX = Math.sign(ballSpeedX) * 1;
         }
         
-        setTimeout(() => {
-            paddleCursor.classList.remove('hit');
-            ball.classList.remove('bounce');
-        }, 200);
+        // Create hit effect
+        createHitEffect(ballRect.left + ballRect.width / 2, ballRect.top);
         
-        // Calculate bounce angle based on where the ball hits the paddle
-        const normalizedHitX = (hitPoint * 2) - 1; // Convert to -1 to 1 range
-        const baseAngle = normalizedHitX * Math.PI / 4; // Max 45 degree bounce
+        // Update score with multipliers
+        const pointsGained = Math.ceil(1 * scoreMultiplier);
+        currentScore += pointsGained;
         
-        const speed = Math.sqrt(ballSpeedX * ballSpeedX + ballSpeedY * ballSpeedY);
-        const newSpeed = Math.min(speed + bounceSpeedIncrease, maxSpeed);
+        // Create score popup showing points gained
+        createScorePopup(ballRect.left + ballRect.width/2, ballRect.top - 20, `+${pointsGained}`);
         
-        // Add subtle vertical influence from paddle movement
-        const paddleInfluence = paddleVelocityY * 0.3;
-        
-        ballSpeedX = Math.sin(baseAngle) * newSpeed;
-        ballSpeedY = -Math.abs(Math.cos(baseAngle) * newSpeed) + paddleInfluence;
-        
-        // Ensure the ball moves upward
-        if (ballSpeedY > 0) ballSpeedY = -ballSpeedY;
-        
-        // Prevent ball from getting stuck
-        ballY = paddleRect.top - gameRect.top - BALL_SIZE - 1;
-        
-        // Update multiplier on successful hit
+        // Update multiplier (combo system)
         updateMultiplier();
         
-    } else if (ballY + BALL_SIZE >= gameArea.offsetHeight) {
-        // Reset multiplier on miss
-        resetMultiplier();
-    }
-
-    // Wall collisions with bonus points
-    if (ballX <= 0 || ballX + BALL_SIZE >= gameArea.offsetWidth) {
-        ballSpeedX = -ballSpeedX * 0.98;
-        ballX = ballX <= 0 ? 0 : gameArea.offsetWidth - BALL_SIZE;
+        // Play hit sound
+        playSound('hit');
         
-        // Small bonus for wall hits
-        if (scoreMultiplier > 1) {
-            const wallBonus = 2 * scoreMultiplier;
-            currentScore += wallBonus;
-            createScorePopup(
-                ballX + (ballX <= 0 ? 0 : BALL_SIZE),
-                ballY + BALL_SIZE/2,
-                `+${wallBonus}`
-            );
-        }
+        // Add screen shake
+        addScreenShake();
         
-        createParticleExplosion(
-            ballX + (ballX <= 0 ? 0 : BALL_SIZE),
-            ballY + BALL_SIZE/2,
-            6
-        );
-        playSound('wall-hit');
-    }
-
-    if (ballY <= 0) {
-        ballSpeedY = -ballSpeedY * 0.98;
-        ballY = 0;
-        
-        // Bonus points for ceiling hits (requires skill)
-        if (scoreMultiplier > 1) {
-            const ceilingBonus = 3 * scoreMultiplier;
-            currentScore += ceilingBonus;
-            createScorePopup(
-                ballX + BALL_SIZE/2,
-                0,
-                `+${ceilingBonus}`
-            );
-        }
-        
-        createParticleExplosion(
-            ballX + BALL_SIZE/2,
-            0,
-            6
-        );
-        playSound('wall-hit');
+        // Create ball trail effect
+        createBallTrail();
     }
 }
 
+// Apply special powers for the selected paddle
+function applyPaddlePower() {
+    if (!selectedPaddle.specialPower) return;
+    
+    switch(selectedPaddle.specialPower) {
+        case "extraBounce":
+            // Blue paddle: Extra bounce height on random hits
+            if (Math.random() < 0.3) {
+                ballSpeedY *= 1.2;
+                createPowerEffect("SUPER BOUNCE!", "#4285f4");
+            }
+            break;
+            
+        case "speedBoost":
+            // Orange paddle: Horizontal speed boost
+            if (Math.random() < 0.3) {
+                ballSpeedX *= 1.3;
+                createPowerEffect("SPEED BOOST!", "#ff9800");
+            }
+            break;
+            
+        case "doublePoints":
+            // Black paddle: Chance for double points
+            if (Math.random() < 0.25) {
+                currentScore += Math.ceil(1 * scoreMultiplier);
+                createPowerEffect("DOUBLE POINTS!", "#000000");
+            }
+            break;
+            
+        case "comboExtender":
+            // Dark blue paddle: Extends combo duration
+            if (Math.random() < 0.3) {
+                // Clear existing timeout and set a longer one
+                if (comboTimeoutId) {
+                    clearTimeout(comboTimeoutId);
+                }
+                comboTimeoutId = setTimeout(() => {
+                    if (consecutiveHits > 0) {
+                        resetMultiplier();
+                        updateComboDisplay();
+                    }
+                }, QUICK_HIT_THRESHOLD * 1.5);
+                
+                createPowerEffect("COMBO EXTENDED!", "#0d47a1");
+            }
+            break;
+    }
+}
+
+// Create a visual effect for power activation
+function createPowerEffect(text, color) {
+    const powerEffect = document.createElement('div');
+    powerEffect.className = 'power-effect';
+    powerEffect.textContent = text;
+    powerEffect.style.color = color;
+    powerEffect.style.left = `${ballX}px`;
+    powerEffect.style.top = `${ballY - 40}px`;
+    gameArea.appendChild(powerEffect);
+    
+    // Remove after animation
+    setTimeout(() => powerEffect.remove(), 1000);
+}
+
+// Ball trail effect
 let lastTrailTime = 0;
 
 function createBallTrail() {
@@ -689,25 +699,36 @@ function createBallTrail() {
     
     const trail = document.createElement('div');
     trail.className = 'ball-trail';
-    trail.style.left = ballX + 'px';
-    trail.style.top = ballY + 'px';
+    trail.style.left = ballX + BALL_SIZE/2 + 'px';
+    trail.style.top = ballY + BALL_SIZE/2 + 'px';
+    
+    // Use the same background image as the ball
+    trail.style.backgroundImage = `url('${selectedBall.image}')`;
+    
     gameArea.appendChild(trail);
     
-    // Remove trail after animation
-    setTimeout(() => trail.remove(), 200);
+    // Remove the trail after animation
+    setTimeout(() => {
+        if (trail && trail.parentNode) {
+            trail.parentNode.removeChild(trail);
+        }
+    }, 200);
 }
 
 function gameLoop() {
     if (!gameArea || !ball) return;
     
     if (gameStarted) {
+        // Apply the ball's specific gravity
+        const ballGravity = selectedBall.gravity || gravity;
+        
         // Create ball trail effect when moving
         if (Math.abs(ballSpeedX) > 2 || Math.abs(ballSpeedY) > 2) {
             createBallTrail();
         }
         
-        // Update ball position
-        ballSpeedY += gravity;
+        // Update ball position with custom gravity
+        ballSpeedY += ballGravity;
         ballX += ballSpeedX;
         ballY += ballSpeedY;
         
@@ -882,7 +903,7 @@ function gameOver() {
             // Request updated leaderboard data after sending score
             refreshLeaderboard();
             console.log("Requesting updated leaderboard data after score submission");
-        }, 1000); // Increased timeout to allow server processing
+        }, 1000);
     }).catch(error => {
         console.error("Error sending game over message:", error);
         
@@ -929,8 +950,15 @@ function resetGame() {
     // Show paddle cursor and ball again
     if (paddleCursor) {
         paddleCursor.style.display = 'block';
+        // Make sure we maintain the selected paddle
+        paddleCursor.style.backgroundImage = `url('${selectedPaddle.image}')`;
     }
-    ball.style.visibility = 'visible';
+    
+    if (ball) {
+        ball.style.visibility = 'visible';
+        // Make sure we maintain the selected ball
+        ball.style.backgroundImage = `url('${selectedBall.image}')`;
+    }
     
     // Reset game state
     gameStarted = false;
@@ -1895,4 +1923,455 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Load saved achievements
     loadAchievements();
+
+    // Weapon selection screen event listeners
+    const startBtn = document.getElementById('start-btn');
+    const backFromWeaponsBtn = document.getElementById('back-from-weapons-btn');
+    const startGameWithWeaponsBtn = document.getElementById('start-game-with-weapons-btn');
+
+    if (startBtn) {
+        startBtn.addEventListener('click', showWeaponSelection);
+    }
+
+    if (backFromWeaponsBtn) {
+        backFromWeaponsBtn.addEventListener('click', () => {
+            // Hide all screens first
+            document.querySelectorAll('.screen').forEach(screen => {
+                screen.classList.remove('active');
+            });
+            
+            // Show menu screen
+            const menuScreen = document.getElementById('menu-screen');
+            if (menuScreen) {
+                menuScreen.classList.add('active');
+            }
+        });
+    }
+
+    if (startGameWithWeaponsBtn) {
+        startGameWithWeaponsBtn.addEventListener('click', startGameWithWeapons);
+    }
+});
+
+// Weapon selection screen
+function showWeaponSelection() {
+    // Hide all screens first
+    document.querySelectorAll('.screen').forEach(screen => {
+        screen.classList.remove('active');
+    });
+    
+    // Then show only the weapon selection screen
+    const weaponScreen = document.getElementById('weapon-selection-screen');
+    
+    if (!weaponScreen) {
+        console.error('Weapon selection screen not found');
+        return;
+    }
+    
+    weaponScreen.classList.add('active');
+    
+    // Populate weapon selection UI
+    populateWeaponSelection();
+}
+
+function populateWeaponSelection() {
+    const paddleContainer = document.getElementById('paddle-selection');
+    const ballContainer = document.getElementById('ball-selection');
+    
+    if (!paddleContainer || !ballContainer) {
+        console.error('Weapon selection containers not found');
+        return;
+    }
+    
+    // Clear existing content
+    paddleContainer.innerHTML = '';
+    ballContainer.innerHTML = '';
+    
+    // Populate paddles
+    Object.entries(weapons.paddles).forEach(([key, paddle]) => {
+        const isUnlocked = highScore >= paddle.unlockScore;
+        const isSelected = selectedPaddle === paddle;
+        
+        const paddleElement = document.createElement('div');
+        paddleElement.className = `weapon-item ${isUnlocked ? 'unlocked' : 'locked'} ${isSelected ? 'selected' : ''}`;
+        paddleElement.innerHTML = `
+            <img src="${paddle.image}" alt="${paddle.name}">
+            <div class="weapon-info">
+                <h3>${paddle.name}</h3>
+                <p>${isUnlocked ? 'Unlocked' : `Unlock at ${paddle.unlockScore} points`}</p>
+                <div class="weapon-stats">
+                    <span>Bounce: ${paddle.bounceHeight}x</span>
+                    <span>Speed: ${paddle.speedMultiplier}x</span>
+                </div>
+            </div>
+        `;
+        
+        if (isUnlocked) {
+            paddleElement.addEventListener('click', () => selectPaddle(paddle));
+        }
+        
+        paddleContainer.appendChild(paddleElement);
+    });
+    
+    // Populate balls
+    Object.entries(weapons.balls).forEach(([key, ball]) => {
+        const isUnlocked = highScore >= ball.unlockScore;
+        const isSelected = selectedBall === ball;
+        
+        const ballElement = document.createElement('div');
+        ballElement.className = `weapon-item ${isUnlocked ? 'unlocked' : 'locked'} ${isSelected ? 'selected' : ''}`;
+        ballElement.innerHTML = `
+            <img src="${ball.image}" alt="${ball.name}">
+            <div class="weapon-info">
+                <h3>${ball.name}</h3>
+                <p>${isUnlocked ? 'Unlocked' : `Unlock at ${ball.unlockScore} points`}</p>
+                <div class="weapon-stats">
+                    <span>Speed: ${ball.speedMultiplier}x</span>
+                    <span>Bounce: ${ball.bounceMultiplier}x</span>
+                </div>
+            </div>
+        `;
+        
+        if (isUnlocked) {
+            ballElement.addEventListener('click', () => selectBall(ball));
+        }
+        
+        ballContainer.appendChild(ballElement);
+    });
+}
+
+function selectPaddle(paddle) {
+    console.log("Selected paddle:", paddle.name, "with image:", paddle.image);
+    selectedPaddle = paddle;
+    populateWeaponSelection();
+    playSound('select');
+}
+
+function selectBall(ball) {
+    console.log("Selected ball:", ball.name, "with image:", ball.image);
+    selectedBall = ball;
+    populateWeaponSelection();
+    playSound('select');
+}
+
+function startGameWithWeapons() {
+    console.log("Starting game with selected weapons:");
+    console.log("Paddle:", selectedPaddle.name, selectedPaddle.image);
+    console.log("Ball:", selectedBall.name, selectedBall.image);
+    
+    // Hide all screens first
+    document.querySelectorAll('.screen').forEach(screen => {
+        screen.classList.remove('active');
+    });
+    
+    // Show only the game screen
+    const gameScreen = document.getElementById('game-screen');
+    if (gameScreen) {
+        gameScreen.classList.add('active');
+    }
+    
+    // Initialize the game with selected weapons
+    initGame();
+    
+    // Double-check that our weapon styles are applied after initialization
+    setTimeout(() => {
+        forceApplyWeaponStyles();
+        
+        // Add a second force apply with a longer delay for extra reliability
+        setTimeout(() => forceApplyWeaponStyles(), 300);
+    }, 50);
+}
+
+// Create a persistent combo display
+function createComboDisplay() {
+    // Remove existing combo display if it exists
+    const existingCombo = document.querySelector('.combo-display');
+    if (existingCombo) {
+        existingCombo.remove();
+    }
+    
+    // Create a new combo display
+    const comboDisplay = document.createElement('div');
+    comboDisplay.className = 'combo-display';
+    comboDisplay.innerHTML = `
+        <div class="combo-counter">Combo: <span class="combo-count">0</span></div>
+        <div class="combo-multiplier">x<span class="multiplier-value">1</span></div>
+    `;
+    gameArea.appendChild(comboDisplay);
+    
+    // Initially hide it
+    comboDisplay.style.opacity = '0';
+}
+
+// Update the combo display with current values
+function updateComboDisplay() {
+    const comboDisplay = document.querySelector('.combo-display');
+    if (!comboDisplay) return;
+    
+    const comboCount = comboDisplay.querySelector('.combo-count');
+    const multiplierValue = comboDisplay.querySelector('.multiplier-value');
+    
+    comboCount.textContent = consecutiveHits;
+    multiplierValue.textContent = scoreMultiplier;
+    
+    // Show the combo display when there's a combo active
+    if (consecutiveHits > 0) {
+        comboDisplay.style.opacity = '1';
+        
+        // Add pulse animation on update
+        comboDisplay.classList.remove('pulse');
+        void comboDisplay.offsetWidth; // Trigger reflow
+        comboDisplay.classList.add('pulse');
+    } else {
+        comboDisplay.style.opacity = '0';
+    }
+}
+
+// Update combo text display
+function showComboText(text) {
+    const comboText = document.createElement('div');
+    comboText.className = 'combo-text';
+    comboText.textContent = text;
+    comboText.style.left = (ballX + BALL_SIZE/2) + 'px';
+    comboText.style.top = (ballY - 40) + 'px';
+    gameArea.appendChild(comboText);
+    
+    // Remove after animation
+    setTimeout(() => comboText.remove(), 1500);
+}
+
+// Enhanced score popup with animation
+function createScorePopup(x, y, text) {
+    const popup = document.createElement('div');
+    popup.className = 'score-popup';
+    popup.textContent = text;
+    popup.style.left = x + 'px';
+    popup.style.top = y + 'px';
+    
+    // Add color based on score value
+    if (text.includes('5x')) {
+        popup.style.color = '#ff5722';
+        popup.style.fontSize = '28px';
+    } else if (text.includes('4x')) {
+        popup.style.color = '#e91e63';
+        popup.style.fontSize = '24px';
+    } else if (text.includes('3x')) {
+        popup.style.color = '#9c27b0';
+        popup.style.fontSize = '22px';
+    } else if (text.includes('2x')) {
+        popup.style.color = '#3f51b5';
+        popup.style.fontSize = '20px';
+    }
+    
+    gameArea.appendChild(popup);
+    
+    // Remove after animation
+    setTimeout(() => popup.remove(), 1000);
+}
+
+// Preload all weapon images to avoid loading delays during gameplay
+function preloadWeaponImages() {
+    console.log("Preloading weapon images");
+    
+    const imagesToPreload = [];
+    
+    // Add all paddle images
+    Object.values(weapons.paddles).forEach(paddle => {
+        imagesToPreload.push(paddle.image);
+    });
+    
+    // Add all ball images
+    Object.values(weapons.balls).forEach(ball => {
+        imagesToPreload.push(ball.image);
+    });
+    
+    // Create image objects to force loading
+    imagesToPreload.forEach(src => {
+        const img = new Image();
+        img.src = src;
+        console.log(`Preloading image: ${src}`);
+    });
+}
+
+// Call preloading on page load
+window.addEventListener('DOMContentLoaded', () => {
+    preloadWeaponImages();
+    
+    // ... rest of your DOMContentLoaded code ...
+    // ... existing code ...
+});
+
+// Fix for paddle and ball styling during game initialization
+function forceApplyWeaponStyles() {
+    if (paddleCursor) {
+        const paddleImgUrl = selectedPaddle.image;
+        paddleCursor.style.backgroundImage = `url('${paddleImgUrl}')`;
+        console.log("Force applied paddle style:", paddleImgUrl);
+    }
+    
+    if (ball) {
+        const ballImgUrl = selectedBall.image;
+        ball.style.backgroundImage = `url('${ballImgUrl}')`;
+        console.log("Force applied ball style:", ballImgUrl);
+    }
+}
+
+// Initialize game
+function initGame() {
+    // Get game elements
+    gameArea = document.getElementById('gameArea');
+    ball = document.getElementById('ball');
+    instructions = document.getElementById('instructions');
+
+    if (!gameArea || !ball) {
+        console.error('Game elements not found. Aborting game initialization.');
+        return;
+    }
+
+    // Clear any existing paddle cursors to avoid duplicates
+    const existingPaddle = document.querySelector('.paddle-cursor');
+    if (existingPaddle) {
+        existingPaddle.remove();
+    }
+
+    // Create paddle cursor
+    paddleCursor = document.createElement('div');
+    paddleCursor.className = 'paddle-cursor';
+    gameArea.appendChild(paddleCursor);
+    
+    console.log("Applying selected weapons:");
+    console.log("Paddle:", selectedPaddle.name, selectedPaddle.image);
+    console.log("Ball:", selectedBall.name, selectedBall.image);
+    
+    // Apply selected weapons with proper styling
+    paddleCursor.style.backgroundImage = `url('${selectedPaddle.image}')`;
+    ball.style.backgroundImage = `url('${selectedBall.image}')`;
+    
+    // For debugging - log the applied styles
+    console.log("Applied styles:", {
+        paddleBackground: paddleCursor.style.backgroundImage,
+        ballBackground: ball.style.backgroundImage
+    });
+    
+    // Set initial ball position and dimensions
+    ball.style.width = BALL_SIZE + 'px';
+    ball.style.height = BALL_SIZE + 'px';
+    ball.style.visibility = 'visible';
+    
+    // Force weapon styles again after a brief delay to ensure they're applied
+    setTimeout(() => forceApplyWeaponStyles(), 100);
+    
+    // Hide default cursor when over game area
+    gameArea.style.cursor = 'none';
+
+    // Remove existing event listeners to prevent duplicates
+    gameArea.removeEventListener('mousemove', handleMouseMove);
+    gameArea.removeEventListener('touchmove', handleTouchMove);
+    gameArea.removeEventListener('mousedown', startGame);
+    gameArea.removeEventListener('touchstart', startGame);
+    
+    // Add event listeners
+    gameArea.addEventListener('mousemove', handleMouseMove);
+    gameArea.addEventListener('touchmove', handleTouchMove, { passive: false });
+    gameArea.addEventListener('mousedown', startGame);
+    gameArea.addEventListener('touchstart', startGame, { passive: false });
+
+    // Position paddle and ball initially
+    resetBall();
+    
+    // Reset game state
+    gameStarted = false;
+    currentScore = 0;
+    document.getElementById('score').textContent = '0';
+    resetMultiplier();
+    
+    // Add combo display if not already present
+    createComboDisplay();
+    
+    // Update high score display
+    document.getElementById('highScore').textContent = highScore;
+
+    // Cancel any existing animation frame
+    if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+    }
+
+    // Start game loop
+    animationFrameId = requestAnimationFrame(gameLoop);
+    
+    // Show instruction message
+    if (instructions) {
+        // Use the authenticated Reddit username in the instructions
+        if (currentUsername) {
+            instructions.innerHTML = `Playing as <span class="username">${currentUsername}</span>. <p>Click to start!</p>`;
+        } else {
+            // If username is not yet available, show loading state
+            instructions.innerHTML = `<p>Loading Reddit username...</p><p>Click to start!</p>`;
+        }
+        instructions.style.display = 'block';
+    }
+
+    // Initialize karma display
+    const karmaElement = document.getElementById('karma');
+    if (karmaElement) {
+        karmaElement.textContent = karma.toString();
+    }
+    
+    console.log("Game initialized successfully");
+}
+
+// Add the preloading call to the DOMContentLoaded event which is at the bottom of the file
+// Main initialization when DOM content is loaded
+document.addEventListener('DOMContentLoaded', function() {
+  // Preload all weapon images first
+  preloadWeaponImages();
+  
+  // Set up network status event listeners
+  window.addEventListener('offline', handleOffline);
+  window.addEventListener('online', handleOnline);
+
+  // Retry if the browser is actually offline at startup
+  if (!navigator.onLine) {
+    handleOffline();
+  } else {
+    // Post a message to Devvit to get the leaderboard data
+    postWebViewMessage({ type: 'webViewReady' }).catch(() => {
+      console.error("Failed to send initial webViewReady message");
+      showError("Failed to connect to Reddit servers. Please try again.", ErrorState.CONNECTION_ERROR);
+    });
+  }
+  
+  // Set up back buttons for navigation
+  const backFromLeaderboardBtn = document.getElementById('back-from-leaderboard-btn');
+  if (backFromLeaderboardBtn) {
+    backFromLeaderboardBtn.addEventListener('click', function() {
+      // Hide leaderboard screen
+      document.getElementById('leaderboard-screen').classList.remove('active');
+      
+      // Show menu screen
+      const menuScreen = document.getElementById('menu-screen');
+      if (menuScreen) {
+        menuScreen.classList.add('active');
+      }
+    });
+  }
+  
+  // Set up weapon selection back button
+  const backFromWeaponsBtn = document.getElementById('back-from-weapons-btn');
+  if (backFromWeaponsBtn) {
+    backFromWeaponsBtn.addEventListener('click', function() {
+      // Hide weapons screen
+      document.getElementById('weapon-selection-screen').classList.remove('active');
+      
+      // Show menu screen
+      const menuScreen = document.getElementById('menu-screen');
+      if (menuScreen) {
+        menuScreen.classList.add('active');
+      }
+    });
+  }
+
+  if (startGameWithWeaponsBtn) {
+    startGameWithWeaponsBtn.addEventListener('click', startGameWithWeapons);
+  }
 });

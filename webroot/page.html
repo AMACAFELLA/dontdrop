@@ -62,6 +62,12 @@
                 Play Game
               </span>
             </button>
+            <button id="weapons-btn" class="menu-button">
+              <span class="button-content">
+                <span class="button-icon gear"></span>
+                Weapons
+              </span>
+            </button>
             <button id="leaderboard-btn" class="menu-button">
               <span class="button-content">
                 <span class="button-icon trophy"></span>
@@ -81,6 +87,37 @@
               </span>
             </button>
           </nav>
+        </div>
+      </div>
+
+      <!-- Weapon Selection Screen -->
+      <div id="weapon-selection-screen" class="screen">
+        <div class="screen-header">
+          <h2>Choose Your Weapons</h2>
+          <button id="back-from-weapons-btn" class="back-button">
+            <span class="button-icon back"></span>
+            Back
+          </button>
+        </div>
+        <div class="weapon-selection-content">
+          <div class="weapon-section">
+            <h3>Select Your Paddle</h3>
+            <div id="paddle-selection" class="weapon-grid">
+              <!-- Paddle options will be populated by JavaScript -->
+            </div>
+          </div>
+          <div class="weapon-section">
+            <h3>Select Your Ball</h3>
+            <div id="ball-selection" class="weapon-grid">
+              <!-- Ball options will be populated by JavaScript -->
+            </div>
+          </div>
+          <button id="start-game-with-weapons-btn" class="menu-button primary">
+            <span class="button-content">
+              <span class="button-icon play"></span>
+              Start Game
+            </span>
+          </button>
         </div>
       </div>
 
@@ -223,6 +260,11 @@
               <div class="instruction-icon score"></div>
               <h3>Score Points</h3>
               <p>Build up combos for higher scores. Wall hits and skillshots give you bonus points!</p>
+            </div>
+            <div class="instruction-card">
+              <div class="instruction-icon weapon"></div>
+              <h3>Choose Your Weapons</h3>
+              <p>Unlock new paddles and balls as you earn points. Each weapon has unique attributes that affect gameplay!</p>
             </div>
           </div>
         </div>
