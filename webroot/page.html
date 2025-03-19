@@ -5,8 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <title>Don't Drop</title>
+    <title>Don't Drop - Reddit Edition</title>
     <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet" href="fixes.css" />
   </head>
   <body>
     <div id="gameWebView" class="game-container">
@@ -23,9 +24,15 @@
             <div class="table-center-line"></div>
             <div class="table-net"></div>
           </div>
+          <!-- Reddit-themed decorations -->
+          <div class="snoo-decoration snoo-left"></div>
+          <div class="snoo-decoration snoo-right"></div>
         </div>
         <div class="menu-content">
           <div class="title-container">
+            <div class="reddit-logo">
+              <div class="reddit-icon"></div>
+            </div>
             <div class="title-ping-pong">
               <div class="ball-decoration"></div>
               <h1 class="game-title">Don't Drop</h1>
@@ -33,6 +40,20 @@
             </div>
             <div class="title-underline"></div>
             <p class="game-subtitle">Master the Paddle, Own the Table</p>
+          </div>
+          <div class="user-info">
+            <div class="avatar-container"></div>
+            <span class="username-display">Guest</span>
+          </div>
+          <div class="stats-card">
+            <div class="stat">
+              <div class="stat-label">High Score</div>
+              <div class="stat-value" id="menu-high-score">0</div>
+            </div>
+            <div class="stat">
+              <div class="stat-label">Karma</div>
+              <div class="stat-value" id="karma">0</div>
+            </div>
           </div>
           <nav class="menu-nav">
             <button id="start-btn" class="menu-button primary">
@@ -53,6 +74,12 @@
                 How to Play
               </span>
             </button>
+            <button id="badges-btn" class="menu-button">
+              <span class="button-content">
+                <span class="button-icon trophy"></span>
+                Achievements
+              </span>
+            </button>
           </nav>
         </div>
       </div>
@@ -70,61 +97,137 @@
               <span id="highScore" class="score-value">0</span>
             </div>
           </div>
+          <div class="karma-counter">
+            <div class="upvote-icon"></div>
+            <span id="karma" class="karma-value">0</span>
+          </div>
         </div>
         <div id="gameArea">
           <div id="ball"></div>
-          <div id="game-over-container"></div> <!-- Add this container for game over overlay -->
-        </div>
-        <div id="instructions" class="instructions pulse">
-          Click or tap to start!
+          <div id="instructions" class="instructions pulse">
+            Click or tap to start!
+          </div>
+          <div id="game-over-container"></div> <!-- Container for game over overlay -->
         </div>
       </div>
 
       <!-- Leaderboard Screen -->
-      <div id="leaderboard-screen" class="screen">
+      <div id="leaderboard-screen" class="screen leaderboard-screen">
         <div class="screen-header">
-          <h2>Top Players</h2>
+          <h2>Reddit Leaderboard</h2>
+          <button id="back-from-leaderboard-btn" class="back-button">
+            <span class="button-icon back"></span>
+            Back
+          </button>
         </div>
         <div class="leaderboard-container">
           <div class="leaderboard-header">
-            <span>Rank</span>
-            <span>Player</span>
-            <span>Score</span>
+            <div class="rank-col">Rank</div>
+            <div class="name-col">Redditor</div>
+            <div class="score-col">Score</div>
+            <div class="date-col">Date</div>
           </div>
-          <div id="leaderboard-body" class="leaderboard-grid">
-            <!-- Leaderboard entries will be added here dynamically -->
+          <div id="leaderboard-entries" class="leaderboard-entries">
+            <!-- Loading state will be replaced by JavaScript -->
+            <div class="loading-spinner">
+              <div class="spinner"></div>
+              <p>Loading leaderboard...</p>
+            </div>
           </div>
         </div>
-        <button id="back-to-menu-btn" class="menu-button">Back to Menu</button>
+        <div class="leaderboard-footer">
+          <p>Can you make it to the top? Play now and set a new high score!</p>
+          <button id="play-from-leaderboard-btn" class="menu-button primary">
+            <span class="button-content">
+              <span class="button-icon play"></span>
+              Play Game
+            </span>
+          </button>
+        </div>
       </div>
 
+      <!-- Achievements Screen -->
+      <div id="badges-screen" class="screen">
+        <div class="screen-header">
+          <h2>Reddit Achievements</h2>
+          <button id="back-from-badges-btn" class="back-button">
+            <span class="button-icon back"></span>
+            Back
+          </button>
+        </div>
+        <div class="achievements-grid">
+          <div class="achievement-card">
+            <div class="achievement-icon beginner"></div>
+            <h3>Ping Pong Beginner</h3>
+            <p>Score 10 points</p>
+            <div class="achievement-status" data-achievement="beginner">Locked</div>
+          </div>
+          <div class="achievement-card">
+            <div class="achievement-icon novice"></div>
+            <h3>Table Tennis Novice</h3>
+            <p>Score 50 points</p>
+            <div class="achievement-status" data-achievement="novice">Locked</div>
+          </div>
+          <div class="achievement-card">
+            <div class="achievement-icon master"></div>
+            <h3>Paddle Master</h3>
+            <p>Score 100 points</p>
+            <div class="achievement-status" data-achievement="master">Locked</div>
+          </div>
+          <div class="achievement-card">
+            <div class="achievement-icon legend"></div>
+            <h3>Reddit Legend</h3>
+            <p>Score 250 points</p>
+            <div class="achievement-status" data-achievement="legend">Locked</div>
+          </div>
+          <div class="achievement-card">
+            <div class="achievement-icon first-bounce"></div>
+            <h3>First Bounce</h3>
+            <p>Get your first bounce</p>
+            <div class="achievement-status" data-achievement="first-bounce">Locked</div>
+          </div>
+          <div class="achievement-card">
+            <div class="achievement-icon quick-reflexes"></div>
+            <h3>Quick Reflexes</h3>
+            <p>Save a high-speed ball</p>
+            <div class="achievement-status" data-achievement="quick-reflexes">Locked</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Award Template (Hidden) -->
+      <div id="award-template" class="award-popup" style="display: none;">
+        <div class="award-icon"></div>
+        <div class="award-text"></div>
+      </div>
+      
       <!-- How to Play Modal -->
       <div id="how-to-play-modal" class="modal">
         <div class="modal-content">
           <div class="modal-header">
             <h2>How to Play</h2>
+            <button class="modal-close">&times;</button>
           </div>
           <div class="modal-body">
             <div class="instruction-card">
               <div class="instruction-icon move"></div>
-              <h3>Move</h3>
-              <p>Use your mouse or finger to control the paddle</p>
+              <h3>Move The Paddle</h3>
+              <p>Move your mouse or finger to control the paddle. Catch the ball before it falls!</p>
             </div>
             <div class="instruction-card">
               <div class="instruction-icon bounce"></div>
-              <h3>Bounce</h3>
-              <p>Keep the ball bouncing as long as possible</p>
+              <h3>Bounce The Ball</h3>
+              <p>Keep the ball bouncing as long as possible. The longer you play, the faster it gets!</p>
             </div>
             <div class="instruction-card">
               <div class="instruction-icon score"></div>
-              <h3>Score</h3>
-              <p>The higher the ball goes, the more points you get!</p>
+              <h3>Score Points</h3>
+              <p>Build up combos for higher scores. Wall hits and skillshots give you bonus points!</p>
             </div>
           </div>
-          <button class="modal-close menu-button">Got it!</button>
         </div>
       </div>
     </div>
-    <script type="module" src="script.js"></script>
+    <script src="script.js"></script>
   </body>
 </html>

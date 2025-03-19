@@ -1,110 +1,191 @@
 import { Devvit, useWebView } from '@devvit/public-api';
-import type { WebViewMessage, DevvitMessage } from './message.js';
+import type { WebViewMessage, DevvitMessage, LeaderboardEntry } from './message.ts';
 import { LoadingAnimation } from './components/LoadingAnimation.js';
-import { checkRedisConnectivity, waitForRedisConnection, ExtendedZRangeOptions, RedisZRangeResult } from './redis.js';
 
-interface GameState {
-  score: number;
-  timestamp: number;
-}
+// Update configuration with required permissions
+Devvit.configure({
+  redditAPI: true, // Enable Reddit API access
+  kvStore: true // Use KV Store for leaderboard
+});
 
-interface ErrorMetrics {
-  errorCount: number;
-  lastError: string;
-  lastErrorTime: number;
-}
+const LEADERBOARD_KEY = 'dontdrop_leaderboard';
+const TOP_PLAYERS_COUNT = 10;
 
-const MAX_RETRY_ATTEMPTS = 3;
-const RETRY_DELAY = 1000; // 1 second
-const ERROR_METRICS_KEY = 'error_metrics';
-const LEADERBOARD_KEY = 'dontdrop:leaderboard';
+// In-memory leaderboard for playtest mode
+let playtestLeaderboard: {username: string, score: number}[] = [];
 
-async function recordError(context: Devvit.Context, error: Error) {
+// Helper function to update leaderboard
+async function updateLeaderboard(context: Devvit.Context, username: string, score: number): Promise<LeaderboardEntry[]> {
   try {
-    const metricsJson = await context.redis.get(ERROR_METRICS_KEY);
-    const metrics: ErrorMetrics = metricsJson ? JSON.parse(metricsJson) : {
-      errorCount: 0,
-      lastError: '',
-      lastErrorTime: 0
-    };
-
-    metrics.errorCount++;
-    metrics.lastError = error.message;
-    metrics.lastErrorTime = Date.now();
-
-    await context.redis.set(ERROR_METRICS_KEY, JSON.stringify(metrics));
-  } catch (e) {
-    console.error('Failed to record error metrics:', e);
-  }
-}
-
-async function retryOperation<T>(
-  operation: () => Promise<T>, 
-  context: Devvit.Context,
-  maxAttempts = MAX_RETRY_ATTEMPTS
-): Promise<T> {
-  let lastError;
-  
-  for (let attempt = 0; attempt < maxAttempts; attempt++) {
-    try {
-      return await operation();
-    } catch (error) {
-      lastError = error;
-      if (error instanceof Error) {
-        await recordError(context, error);
+    console.log(`Updating leaderboard for user ${username} with score ${score}`);
+    
+    if (!username || username === 'Guest' || username === '') {
+      console.log('Cannot update leaderboard: username is empty or Guest');
+      return getLeaderboard(context); // Return current leaderboard without changes
+    }
+    
+    // Get current leaderboard
+    let leaderboard = await getLeaderboard(context);
+    
+    // Find if user already has an entry
+    const existingEntryIndex = leaderboard.findIndex(entry => entry.username === username);
+    
+    if (existingEntryIndex >= 0) {
+      // Only update if new score is higher
+      if (score > leaderboard[existingEntryIndex].score) {
+        leaderboard[existingEntryIndex].score = score;
+        leaderboard[existingEntryIndex].updatedAt = new Date().toISOString();
+        console.log(`Updated leaderboard entry for ${username} with score ${score}`);
+      } else {
+        console.log(`Not updating score for ${username} as current score (${leaderboard[existingEntryIndex].score}) is higher than new score (${score})`);
+        return leaderboard;
       }
-      if (attempt < maxAttempts - 1) {
-        await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
+    } else {
+      // Add new entry
+      leaderboard.push({
+        username,
+        score,
+        rank: 0, // Will be calculated below
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      });
+      console.log(`Added new leaderboard entry for ${username} with score ${score}`);
+    }
+    
+    // Sort by score (highest first)
+    leaderboard.sort((a, b) => b.score - a.score);
+    
+    // Update ranks
+    leaderboard = leaderboard.map((entry, index) => ({
+      ...entry,
+      rank: index + 1
+    }));
+    
+    // Limit to top players
+    if (leaderboard.length > TOP_PLAYERS_COUNT) {
+      leaderboard = leaderboard.slice(0, TOP_PLAYERS_COUNT);
+    }
+    
+    try {
+      // Save to KV Store
+      await context.kvStore.put(LEADERBOARD_KEY, JSON.stringify(leaderboard));
+      console.log(`Saved leaderboard with ${leaderboard.length} entries to KV Store`);
+    } catch (error) {
+      if (error instanceof Error && error.message?.includes('ServerCallRequired')) {
+        console.warn('Using in-memory leaderboard in playtest mode');
+        playtestLeaderboard = leaderboard.map(entry => ({
+          username: entry.username,
+          score: entry.score
+        }));
+      } else {
+        console.error('Error saving leaderboard to KV Store:', error);
       }
     }
+    
+    return leaderboard;
+  } catch (error) {
+    console.error('Error updating leaderboard:', error);
+    return [];
   }
-  
-  throw lastError;
 }
 
-Devvit.configure({
-  redditAPI: true,
-  redis: true
-});
+// Helper function to get leaderboard data
+async function getLeaderboard(context: Devvit.Context): Promise<LeaderboardEntry[]> {
+  try {
+    try {
+      // Try to get leaderboard from KV Store
+      const stored = await context.kvStore.get(LEADERBOARD_KEY);
+      
+      if (stored && typeof stored === 'string') {
+        const leaderboard = JSON.parse(stored) as LeaderboardEntry[];
+        console.log(`Retrieved leaderboard with ${leaderboard.length} entries from KV Store`);
+        return leaderboard;
+      }
+      
+      console.log('No leaderboard data found in KV Store');
+      return [];
+    } catch (error) {
+      if (error instanceof Error && error.message?.includes('ServerCallRequired')) {
+        console.warn('Using in-memory leaderboard in playtest mode');
+        
+        // Convert playtest leaderboard to full entries
+        if (playtestLeaderboard.length > 0) {
+          return playtestLeaderboard
+            .sort((a, b) => b.score - a.score)
+            .map((entry, index) => ({
+              username: entry.username,
+              score: entry.score,
+              rank: index + 1,
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString()
+            }));
+        }
+      } else {
+        console.error('Error retrieving leaderboard from KV Store:', error);
+      }
+      
+      return [];
+    }
+  } catch (error) {
+    console.error('Error getting leaderboard:', error);
+    return [];
+  }
+}
+
+// Store a mapping of session IDs to usernames
+const userSessions = new Map<string, string>();
+
+// Generate a unique session ID for each webview
+let sessionCounter = 0;
+
+// Flag to detect if we're running in playtest mode
+let isPlaytestMode = false;
 
 const DontDropGame = ({ context }: { context: Devvit.Context }) => {
   const { mount } = useWebView({
     url: 'page.html',
     onMessage: async (message: WebViewMessage, hook) => {
-      // Check Redis connectivity first
-      if (!await waitForRedisConnection(context)) {
-        hook.postMessage({
-          type: 'devvit-message',
-          data: {
-            message: {
-              type: 'error',
-              data: { message: 'Game service currently unavailable. Please try again later.' }
+      try {
+        // Create a unique identifier for this webview session
+        const sessionId = `session_${sessionCounter}`;
+        sessionCounter++;
+        
+        // Try to get the real Reddit username if not already stored for this session
+        if (!userSessions.has(sessionId)) {
+          try {
+            const currentUser = await context.reddit.getCurrentUser();
+            if (currentUser && currentUser.username) {
+              userSessions.set(sessionId, currentUser.username);
+              console.log(`Stored username ${currentUser.username} for session ${sessionId}`);
+              isPlaytestMode = false; // We're in a real Reddit environment
+            } else {
+              console.warn('Reddit user object retrieved but no username found');
+              // Default to "TestUser" in playtest mode for better testing
+              userSessions.set(sessionId, 'TestUser');
+              isPlaytestMode = true;
+            }
+          } catch (error: any) {
+            console.error('Failed to get username with error:', error);
+            // Use "TestUser" as fallback for playtest environment
+            if (error.message?.includes('ServerCallRequired')) {
+              console.log('Using "TestUser" as fallback in playtest mode');
+              userSessions.set(sessionId, 'TestUser');
+              isPlaytestMode = true;
+            } else {
+              userSessions.set(sessionId, '');
             }
           }
-        });
-        return;
-      }
-
-      try {
-        let highScoreKey = 'dontdrop:global:highscore';
-        let username = 'Guest';
-        try {
-          const subreddit = await context.reddit.getCurrentSubreddit();
-          if (subreddit?.name) {
-            highScoreKey = `dontdrop:${subreddit.name}:highscore`;
-          }
-          username = (await context.reddit.getCurrentUser())?.username ?? 'Guest';
-        } catch (error) {
-          console.error('Failed to get subreddit or username:', error);
         }
+        
+        // Retrieve the username for this session
+        const username = userSessions.get(sessionId) || 'TestUser';
+        console.log(`Processing message for session ${sessionId} with username ${username}`);
 
         switch (message.type) {
           case 'webViewReady': {
-            const score = await retryOperation(async () => {
-              return await context.redis.get(highScoreKey);
-            }, context);
-            
-            const highScore = parseInt(score ?? '0', 10);
+            console.log('WebView ready, sending initial data with username:', username);
+            // Get leaderboard data
+            let leaderboard = await getLeaderboard(context);
             
             hook.postMessage({
               type: 'devvit-message',
@@ -113,138 +194,92 @@ const DontDropGame = ({ context }: { context: Devvit.Context }) => {
                   type: 'initialData',
                   data: { 
                     username, 
-                    highScore 
+                    leaderboard,
+                    isPlaytestMode // Send whether we're in playtest mode
                   }
                 }
               }
             });
-            break;
-          }
-          
-          case 'updateScore': {
-            try {
-              await retryOperation(async () => {
-                await context.redis.set(
-                  `${highScoreKey}:state`,
-                  JSON.stringify({
-                    score: message.data.score,
-                    timestamp: Date.now()
-                  } as GameState)
-                );
-                await context.redis.expire(`${highScoreKey}:state`, 3600);
-              }, context);
-            } catch (error) {
-              console.error('Failed to save game state:', error);
-              hook.postMessage({
-                type: 'devvit-message',
-                data: {
-                  message: {
-                    type: 'error',
-                    data: { message: 'Failed to save game state. Your score will be saved when connection is restored.' }
-                  }
-                }
-              });
-            }
+            
+            // Log what we sent to the client for debugging purposes
+            console.log('Sent initialData to client with:', { username, leaderboardSize: leaderboard.length, isPlaytestMode });
             break;
           }
           
           case 'gameOver': {
-            await retryOperation(async () => {
-              await context.redis.del(`${highScoreKey}:state`);
-            }, context);
+            const finalScore = message.data.finalScore;
+            console.log(`Game over for ${username || 'Guest'} with score ${finalScore}`);
+            
+            // Update leaderboard
+            let updatedLeaderboard: LeaderboardEntry[] = [];
             
             try {
-              const currentHighScore = parseInt(
-                await retryOperation(async () => {
-                  return (await context.redis.get(highScoreKey)) ?? '0'
-                }, context), 
-                10
-              );
-
-              const finalScore = message.data.finalScore;
-
-              // Always update leaderboard first
-              await retryOperation(async () => {
-                await context.redis.zAdd(LEADERBOARD_KEY, {
-                  score: finalScore,
-                  member: username
-                });
-              }, context);
-
-              // Update high score if beaten
-              if (finalScore > currentHighScore) {
-                await retryOperation(async () => {
-                  await context.redis.set(highScoreKey, finalScore.toString());
-                }, context);
+              // Only update the leaderboard if we have a username
+              if (username && username !== '') {
+                // Update leaderboard with the new score
+                updatedLeaderboard = await updateLeaderboard(context, username, finalScore);
+                console.log('Leaderboard successfully updated with new score');
+              } else {
+                console.warn('Could not update leaderboard: no username available for session', sessionId);
+                updatedLeaderboard = await getLeaderboard(context);
+              }
+            } catch (error: any) {
+              console.error('Error updating leaderboard:', error);
+              updatedLeaderboard = await getLeaderboard(context);
+            }
+            
+            // Log what we're sending back to the client
+            console.log(`Sending gameOverAck with ${updatedLeaderboard.length} leaderboard entries`);
+            
+              hook.postMessage({
+                type: 'devvit-message',
+                data: {
+                  message: {
+                  type: 'gameOverAck',
+                  data: { 
+                    success: true,
+                    username: username || '', // Send the username back to confirm
+                    leaderboard: updatedLeaderboard,
+                    isPlaytestMode // Send whether we're in playtest mode
+                  }
+                  }
+                }
+              });
+            break;
+          }
+          
+          case 'getLeaderboard': {
+            console.log(`Leaderboard requested by client with username: ${username || 'Guest'}`);
+            // Get leaderboard data
+            const leaderboard = await getLeaderboard(context);
+            
+            console.log('Sending leaderboardData response with', leaderboard.length, 'entries');
                 
                 hook.postMessage({
                   type: 'devvit-message',
                   data: {
                     message: {
-                      type: 'updateHighScore',
-                      data: { highScore: finalScore }
-                    }
-                  }
-                });
-              }
-
-              // Get updated leaderboard
-              const leaderboard = await retryOperation(async () => {
-                // Get top 10 scores descending
-                return await context.redis.zRange(LEADERBOARD_KEY, 0, 9, { 
-                  withScores: true,
-                  reverse: true 
-                } as ExtendedZRangeOptions) as RedisZRangeResult[];
-              }, context);
-
-              // Transform leaderboard data into JSON-compatible format
-              const formattedLeaderboard = leaderboard.map(entry => ({
-                member: entry.member,
-                score: entry.score
-              }));
-
-              // Send leaderboard update
-              hook.postMessage({
-                type: 'devvit-message',
+                  type: 'leaderboardData',
                 data: {
-                  message: {
-                    type: 'updateLeaderboard',
-                    data: { leaderboard: formattedLeaderboard }
+                    username: username || '', // Send the username back to confirm
+                    leaderboard,
+                    isPlaytestMode // Send whether we're in playtest mode
+                  }
                   }
                 }
               });
-
-            } catch (error) {
-              console.error('Failed to update score:', error);
-              hook.postMessage({
-                type: 'devvit-message',
-                data: {
-                  message: {
-                    type: 'error',
-                    data: { message: 'Failed to update score. Your score will be saved when connection is restored.' }
-                  }
-                }
-              });
-            }
             break;
           }
 
           default: {
-            const exhaustiveCheck: never = message;
-            console.warn('Unknown message type:', exhaustiveCheck);
+            // Use type assertion to inform TypeScript about the message structure
+            const unknownMessage = message as {type: string};
+            console.warn('Unknown message type:', unknownMessage.type);
             break;
           }
         }
       } catch (error) {
         console.error('Error handling message:', error);
-        
-        // Check if Redis is still connected
-        const isRedisConnected = await checkRedisConnectivity(context);
-        const errorMessage = isRedisConnected 
-          ? 'Failed to process game action' 
-          : 'Lost connection to game service. Your progress will be saved when connection is restored.';
-        
-        context.ui.showToast(errorMessage);
         
         try {
           hook.postMessage({
@@ -252,7 +287,10 @@ const DontDropGame = ({ context }: { context: Devvit.Context }) => {
             data: {
               message: {
                 type: 'error',
-                data: { message: errorMessage }
+                data: { 
+                  message: 'Failed to process game action',
+                  details: error instanceof Error ? error.message : String(error)
+                }
               }
             }
           });
@@ -268,14 +306,7 @@ const DontDropGame = ({ context }: { context: Devvit.Context }) => {
 
   return (
     <vstack>
-      <button onPress={async () => {
-        // Verify Redis connection before launching game
-        if (await waitForRedisConnection(context)) {
-          mount();
-        } else {
-          context.ui.showToast('Game service currently unavailable. Please try again later.');
-        }
-      }}>Play Don't Drop</button>
+      <button onPress={() => mount()}>Play Don't Drop</button>
     </vstack>
   );
 };

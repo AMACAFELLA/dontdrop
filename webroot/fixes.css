@@ -1,0 +1,423 @@
+#ball {
+  width: 50px !important;
+  height: 50px !important;
+  background: url('assets/ball.png') no-repeat center center !important;
+  background-size: contain !important;
+  border-radius: 50% !important;
+  position: absolute !important;
+  pointer-events: none !important;
+  box-shadow: 0 0 15px var(--primary-glow) !important;
+  will-change: transform !important;
+  z-index: 50 !important;
+  display: block !important;
+  visibility: visible !important;
+}
+
+.paddle-cursor {
+  width: 120px !important;
+  height: 25px !important;
+  background: url('assets/paddle.png') no-repeat center center !important;
+  background-size: contain !important;
+  position: absolute !important;
+  pointer-events: none !important;
+  z-index: 100 !important;
+  transition: transform 0.1s ease-out !important;
+  will-change: transform !important;
+  box-shadow: 0 0 15px var(--primary-glow) !important;
+  display: block !important;
+  visibility: visible !important;
+}
+
+/* Ensure visual elements are shown */
+.ripple, .particle-hit, .ball-trail, .particle {
+  display: block !important;
+  visibility: visible !important;
+}
+
+/* Ensure game elements are visible */
+#gameArea, .game-container {
+  overflow: visible !important;
+}
+
+/* Leaderboard fixes */
+.leaderboard-screen {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  height: 100% !important;
+  width: 100% !important;
+  padding: 20px !important;
+  box-sizing: border-box !important;
+  color: white !important;
+  overflow-y: auto !important;
+  background-color: #121212 !important;
+}
+
+.leaderboard-container {
+  width: 100% !important;
+  max-width: 800px !important;
+  background: rgba(30, 30, 30, 0.8) !important;
+  border-radius: 15px !important;
+  border: 2px solid var(--reddit-orangered) !important;
+  box-shadow: 0 0 20px rgba(255, 69, 0, 0.3) !important;
+  overflow: hidden !important;
+  margin-bottom: 25px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  flex: 1 !important;
+  min-height: 450px !important;
+  max-height: 600px !important;
+  z-index: 10 !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+.leaderboard-header {
+  display: grid !important;
+  grid-template-columns: 80px 1fr 120px 120px !important;
+  background-color: #1A1A1B !important;
+  padding: 15px !important;
+  font-weight: bold !important;
+  border-bottom: 2px solid var(--reddit-orangered) !important;
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 100 !important;
+  color: white !important;
+  text-shadow: 0 0 5px rgba(255, 69, 0, 0.5) !important;
+}
+
+.leaderboard-entries {
+  max-height: 450px !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  flex: 1 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  background-color: rgba(26, 26, 27, 0.9) !important;
+  padding: 0 !important;
+  z-index: 5 !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  position: relative !important;
+}
+
+.leaderboard-entry {
+  display: grid !important;
+  grid-template-columns: 80px 1fr 120px 120px !important;
+  padding: 15px !important;
+  margin: 5px 10px !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+  transition: all 0.2s ease !important;
+  background-color: rgba(36, 36, 36, 0.8) !important;
+  border-radius: 8px !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  position: relative !important;
+  z-index: 10 !important;
+}
+
+.leaderboard-entry:hover {
+  background-color: rgba(50, 50, 55, 0.9) !important;
+  transform: translateY(-2px) !important;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2) !important;
+}
+
+.leaderboard-entry.current-user {
+  background-color: rgba(255, 69, 0, 0.2) !important;
+  border-left: 3px solid var(--reddit-orangered) !important;
+  box-shadow: 0 0 15px rgba(255, 69, 0, 0.3) !important;
+}
+
+.rank-col {
+  width: 80px !important;
+  font-weight: bold !important;
+  text-align: center !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.name-col {
+  flex: 1 !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  text-align: left !important;
+  font-weight: bold !important;
+  color: white !important;
+}
+
+.score-col {
+  width: 120px !important;
+  font-weight: bold !important;
+  text-align: right !important;
+  color: #ff4500 !important; /* Reddit orangered */
+  font-size: 18px !important;
+}
+
+.date-col {
+  width: 120px !important;
+  text-align: right !important;
+  color: rgba(255, 255, 255, 0.7) !important;
+}
+
+/* Screen header with title and back button */
+.screen-header {
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  width: 100% !important;
+  max-width: 800px !important;
+  margin-bottom: 20px !important;
+  padding: 0 5px !important;
+}
+
+.screen-header h2 {
+  font-size: 28px !important;
+  color: white !important;
+  text-shadow: 0 0 10px rgba(255, 69, 0, 0.5) !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* Empty leaderboard state */
+.empty-leaderboard {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 40px 20px !important;
+  text-align: center !important;
+  color: white !important;
+  min-height: 300px !important;
+  width: 100% !important;
+}
+
+.empty-leaderboard p {
+  margin: 8px 0 !important;
+  font-size: 16px !important;
+  line-height: 1.5 !important;
+  max-width: 400px !important;
+}
+
+.empty-leaderboard .icon {
+  font-size: 48px !important;
+  margin-bottom: 20px !important;
+  color: var(--reddit-orangered) !important;
+}
+
+/* Error state with retry button */
+.leaderboard-error {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 30px 20px !important;
+  text-align: center !important;
+  color: white !important;
+  background-color: rgba(0, 0, 0, 0.5) !important;
+  border-radius: 10px !important;
+  min-height: 200px !important;
+  width: 100% !important;
+}
+
+.leaderboard-error p {
+  margin-bottom: 20px !important;
+  font-size: 16px !important;
+}
+
+.retry-button {
+  background: linear-gradient(to bottom right, #ff5700, #ff8c5a) !important;
+  color: white !important;
+  border: none !important;
+  border-radius: 50px !important;
+  padding: 10px 25px !important;
+  font-size: 16px !important;
+  font-weight: bold !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3) !important;
+  outline: none !important;
+}
+
+.retry-button:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 6px 15px rgba(0, 0, 0, 0.4) !important;
+  background: linear-gradient(to bottom right, #ff6a33, #ff9e75) !important;
+}
+
+/* Loading spinner */
+.loading-spinner {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 40px 20px !important;
+  min-height: 300px !important;
+  width: 100% !important;
+  z-index: 100 !important;
+  position: relative !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+.spinner {
+  width: 60px !important;
+  height: 60px !important;
+  border: 5px solid rgba(255, 69, 0, 0.2) !important;
+  border-top: 5px solid var(--reddit-orangered) !important;
+  border-radius: 50% !important;
+  animation: spin 1s linear infinite !important;
+  margin-bottom: 20px !important;
+  z-index: 100 !important;
+  position: relative !important;
+  display: block !important;
+  visibility: visible !important;
+}
+
+.loading-spinner p {
+  color: white !important;
+  font-size: 16px !important;
+  text-align: center !important;
+  margin-bottom: 10px !important;
+  max-width: 320px !important;
+  z-index: 100 !important;
+  position: relative !important;
+}
+
+/* Leaderboard footer */
+.leaderboard-footer {
+  width: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 15px !important;
+  background-color: #1A1A1B !important;
+  border-top: 1px solid rgba(255, 69, 0, 0.3) !important;
+  margin-top: 20px !important;
+}
+
+.leaderboard-footer p {
+  margin-bottom: 15px !important;
+  color: white !important;
+  text-align: center !important;
+}
+
+.leaderboard-footer .menu-button {
+  margin-top: 10px !important;
+}
+
+/* Medal styling for top ranks */
+.rank-medal {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 30px !important;
+  height: 30px !important;
+  border-radius: 50% !important;
+  font-weight: bold !important;
+  color: #000 !important;
+}
+
+.rank-medal.rank-1, .rank-1 .rank-medal {
+  background: linear-gradient(135deg, #FFD700, #FFC800) !important;
+  box-shadow: 0 0 10px rgba(255, 215, 0, 0.7) !important;
+}
+
+.rank-medal.rank-2, .rank-2 .rank-medal {
+  background: linear-gradient(135deg, #C0C0C0, #A0A0A0) !important;
+  box-shadow: 0 0 10px rgba(192, 192, 192, 0.7) !important;
+}
+
+.rank-medal.rank-3, .rank-3 .rank-medal {
+  background: linear-gradient(135deg, #CD7F32, #B36A24) !important;
+  box-shadow: 0 0 10px rgba(205, 127, 50, 0.7) !important;
+}
+
+/* User avatar */
+.user-avatar {
+  width: 24px !important;
+  height: 24px !important;
+  border-radius: 50% !important;
+  background: linear-gradient(135deg, #ff5700, #ff8c5a) !important;
+  flex-shrink: 0 !important;
+}
+
+/* Current user tag */
+.current-user-tag {
+  background-color: rgba(255, 69, 0, 0.7) !important;
+  color: white !important;
+  font-size: 12px !important;
+  padding: 3px 6px !important;
+  border-radius: 10px !important;
+  margin-left: 8px !important;
+  font-weight: normal !important;
+}
+
+/* Responsive adjustments */
+@media (max-width: 700px) {
+  .leaderboard-header,
+  .leaderboard-entry {
+    grid-template-columns: 60px 1fr 80px !important;
+  }
+  
+  .date-col {
+    display: none !important;
+  }
+  
+  .leaderboard-container {
+    margin: 0 !important;
+  }
+}
+
+/* Button for playing from leaderboard */
+.menu-button.primary {
+  background: linear-gradient(to bottom right, #ff5700, #ff8c5a) !important;
+  border: none !important;
+  color: white !important;
+  padding: 12px 25px !important;
+  border-radius: 50px !important;
+  font-weight: bold !important;
+  font-size: 16px !important;
+  cursor: pointer !important;
+  transition: all 0.3s ease !important;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2) !important;
+  outline: none !important;
+  margin-top: 10px !important;
+}
+
+.menu-button.primary:hover {
+  transform: translateY(-3px) !important;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3) !important;
+  background: linear-gradient(to bottom right, #ff6a33, #ff9e75) !important;
+}
+
+.menu-button.primary:active {
+  transform: translateY(1px) !important;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2) !important;
+}
+
+/* Playtest mode notice */
+.playtest-mode-notice,
+.playtest-mode-notice p,
+/* Playtest related styles */
+.playtest-note {
+  display: none !important;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Ensure proper animation for updated leaderboard */
+.leaderboard-entries.updated {
+  animation: highlight 0.5s ease-in-out !important;
+}
+
+@keyframes highlight {
+  0% { background-color: rgba(255, 69, 0, 0.2) !important; }
+  100% { background-color: rgba(26, 26, 27, 0.9) !important; }
+}

@@ -3,26 +3,26 @@ export type DevvitMessagePayload = {
   type: 'initialData';
   data: {
     username: string;
-    highScore: number;
-    savedState?: {
-      score: number;
-      timestamp: number;
-    };
+    leaderboard: LeaderboardEntry[];
   };
 } | {
-  type: 'updateHighScore';
+  type: 'gameOverAck';
   data: {
-    highScore: number;
+    success: boolean;
+    username?: string;
+    leaderboard: LeaderboardEntry[];
   };
 } | {
-  type: 'updateLeaderboard';
+  type: 'leaderboardData';
   data: {
-    leaderboard: Array<{ member: string; score: number; }>;
+    username?: string;
+    leaderboard: LeaderboardEntry[];
   };
 } | {
   type: 'error';
   data: {
     message: string;
+    details?: string;
   };
 };
 
@@ -37,11 +37,11 @@ export type DevvitMessage = {
 export type WebViewMessage = {
   type: 'webViewReady';
 } | {
-  type: 'updateScore';
-  data: { score: number };
-} | {
   type: 'gameOver';
-  data: { finalScore: number };
+  data: { finalScore: number; existingLeaderboard?: LeaderboardEntry[] };
+} | {
+  type: 'getLeaderboard';
+  data?: { existingLeaderboard?: LeaderboardEntry[] };
 };
 
 /** 
@@ -49,3 +49,18 @@ export type WebViewMessage = {
  * This helps TypeScript understand the message event structure.
  */
 export type DevvitMessageEvent = MessageEvent<DevvitMessage>;
+
+export type LeaderboardEntry = {
+  username: string;
+  score: number;
+  rank: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type DevvitSystemMessage = {
+  type: 'devvit-message';
+  data: {
+    message: DevvitMessage;
+  };
+};
