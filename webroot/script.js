@@ -732,6 +732,28 @@ function gameLoop() {
         ballX += ballSpeedX;
         ballY += ballSpeedY;
         
+        // Add wall collision detection
+        // Left and right walls
+        if (ballX <= 0) {
+            ballX = 0;
+            ballSpeedX = -ballSpeedX;
+            createHitEffect(0, ballY + BALL_SIZE/2);
+            playSound('hit');
+        } else if (ballX + BALL_SIZE >= gameArea.offsetWidth) {
+            ballX = gameArea.offsetWidth - BALL_SIZE;
+            ballSpeedX = -ballSpeedX;
+            createHitEffect(gameArea.offsetWidth, ballY + BALL_SIZE/2);
+            playSound('hit');
+        }
+        
+        // Top wall
+        if (ballY <= 0) {
+            ballY = 0;
+            ballSpeedY = -ballSpeedY;
+            createHitEffect(ballX + BALL_SIZE/2, 0);
+            playSound('hit');
+        }
+        
         // Check for collision with paddle
         checkCollision();
         

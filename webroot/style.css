@@ -525,6 +525,7 @@ canvas {
 
 .title-container {
   text-align: center;
+  margin-top: 4rem; /* Increased from 2rem to 4rem to bring the title down further */
   margin-bottom: 2rem;
   animation: slideIn 0.8s ease backwards;
   margin-bottom: 3rem;
@@ -581,11 +582,11 @@ canvas {
 
 .menu-nav {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   gap: 1rem;
   z-index: 1;
   display: flex;
-  flex-direction: column;
+  flex-wrap: wrap;
   gap: 1.2rem;
   z-index: 1;
   margin-top: 2rem;
