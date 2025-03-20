@@ -342,4 +342,85 @@ Devvit.addMenuItem({
   }
 });
 
+// Scheduler job to post about new top 5 player
+Devvit.addSchedulerJob({
+  name: 'new_top_player',
+  onRun: async (event, context) => {
+    try {
+      const data = event.data as { username: string; score: number; rank: number };
+      const { username, score, rank } = data;
+      const subreddit = await context.reddit.getCurrentSubreddit();
+      
+      await context.reddit.submitPost({
+        subredditName: subreddit.name,
+        title: `🏆 ${username} just reached rank #${rank} on the Don't Drop leaderboard!`,
+        text: `**${username}** just scored **${score}** points and is now ranked #${rank} on our Don't Drop leaderboard!\n\nCan you beat this score? Play now and show off your skills!`,
+      });
+      
+      console.log(`Posted about new top player ${username} with rank ${rank}`);
+    } catch (error) {
+      console.error('Error posting about new top player:', error);
+    }
+  },
+});
+
+// Scheduler job to post weekly leaderboard
+Devvit.addSchedulerJob({
+  name: 'weekly_leaderboard',
+  onRun: async (_, context) => {
+    try {
+      const subreddit = await context.reddit.getCurrentSubreddit();
+      
+      // Get leaderboard data using the getLeaderboard helper function
+      // But first transform the context to the expected type
+      const leaderboard = await getLeaderboard(context as unknown as Devvit.Context);
+      
+      // Get top 5 players
+      const topPlayers = leaderboard.slice(0, 5);
+      
+      if (topPlayers.length === 0) {
+        console.log('No players in leaderboard, skipping weekly post');
+        return;
+      }
+      
+      // Create content for the post
+      let leaderboardText = '# This Week\'s Top Don\'t Drop Players\n\n';
+      topPlayers.forEach((player, index) => {
+        leaderboardText += `${index + 1}. **${player.username}** with a score of **${player.score}**\n`;
+      });
+      leaderboardText += '\nCan you beat these scores? Play now and climb the leaderboard!';
+      
+      // Submit the post
+      await context.reddit.submitPost({
+        subredditName: subreddit.name,
+        title: '🏆 Weekly Don\'t Drop Leaderboard - Top Players 🏆',
+        text: leaderboardText,
+      });
+      
+      console.log('Posted weekly leaderboard');
+    } catch (error) {
+      console.error('Error posting weekly leaderboard:', error);
+    }
+  },
+});
+
+// Install trigger to schedule weekly leaderboard post
+Devvit.addTrigger({
+  event: 'AppInstall',
+  onEvent: async (_, context) => {
+    try {
+      // Schedule weekly leaderboard post (runs every Sunday at midnight)
+      const jobId = await context.scheduler.runJob({
+        cron: '0 0 * * 0',  // Runs at 00:00 on Sunday
+        name: 'weekly_leaderboard',
+        data: {},
+      });
+      await context.kvStore.put('weekly_leaderboard_job_id', jobId);
+      console.log('Scheduled weekly leaderboard post with job ID:', jobId);
+    } catch (e) {
+      console.error('Error scheduling weekly leaderboard:', e);
+    }
+  },
+});
+
 export default Devvit;

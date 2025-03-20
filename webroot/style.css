@@ -452,8 +452,21 @@ canvas {
 
 /* Focus styles for keyboard navigation */
 :focus {
-  outline: 2px solid #4CAF50;
-  outline-offset: 2px;
+  outline: none !important;
+  box-shadow: 0 0 0 2px var(--reddit-orangered), 0 0 10px rgba(255, 69, 0, 0.4) !important;
+  outline-offset: 2px !important;
+  transition: box-shadow 0.2s ease !important;
+}
+
+:focus:not(:focus-visible) {
+  box-shadow: none !important;
+}
+
+:focus-visible {
+  outline: none !important;
+  box-shadow: 0 0 0 2px var(--reddit-orangered), 0 0 10px rgba(255, 69, 0, 0.4) !important;
+  outline-offset: 2px !important;
+  transition: box-shadow 0.2s ease !important;
 }
 
 /* High contrast mode support */
@@ -791,6 +804,9 @@ canvas {
   max-width: 600px;
   width: 90%;
   box-shadow: 0 0 30px rgba(255, 69, 0, 0.2);
+  max-width: 80%;
+  width: auto;
+  padding: 1rem;
 }
 
 .modal.active .modal-content {
@@ -802,14 +818,13 @@ canvas {
 .modal-body {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 2rem;
-  margin: 2rem 0;
+  gap: 1rem;
+  margin: 1rem 0;
 }
 
 .instruction-card {
-  background: rgba(255, 255, 255, 0.05);
-  padding: 1.5rem;
-  border-radius: 15px;
+  padding: 0.5rem;
+  border-radius: 10px;
   border: 1px solid rgba(255, 69, 0, 0.3);
   text-align: center;
   transition: all 0.3s ease;
@@ -823,25 +838,9 @@ canvas {
   box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
 }
 
-.instruction-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.1), transparent);
-  transform: translateX(-100%);
-  transition: 0.5s;
-}
-
-.instruction-card:hover::before {
-  transform: translateX(100%);
-}
-
 .instruction-icon {
-  width: 60px;
-  height: 60px;
+  width: 50px;
+  height: 50px;
   margin: 0 auto 1rem;
   position: relative;
   border-radius: 50%;
@@ -877,12 +876,13 @@ canvas {
 .instruction-card h3 {
   color: var(--reddit-orangered);
   margin-bottom: 1rem;
-  font-size: 1.5rem;
+  font-size: 1rem;
 }
 
 .instruction-card p {
   color: #FFF;
   line-height: 1.6;
+  font-size: 0.8rem;
 }
 
 /* Modal close button enhancement */
@@ -1326,7 +1326,7 @@ canvas {
   text-align: center;
   font-size: 2em;
   line-height: 60px;
-  color: var(--accent);
+  color: var (--accent);
 }
 
 .ball.bounce {
@@ -2090,35 +2090,6 @@ canvas {
   font-size: 0.9rem;
 }
 
-/* Karma animations */
-@keyframes karmaUp {
-  0% {
-    transform: translateY(0) scale(1);
-    opacity: 1;
-  }
-  100% {
-    transform: translateY(-30px) scale(0.5);
-    opacity: 0;
-  }
-}
-
-.karma-indicator {
-  position: absolute;
-  font-weight: bold;
-  font-size: 1.2rem;
-  pointer-events: none;
-  z-index: 100;
-  animation: karmaUp 1s ease-out forwards;
-}
-
-.karma-up {
-  color: var(--reddit-orangered);
-}
-
-.karma-down {
-  color: var(--downvote);
-}
-
 /* Game over screen Reddit-themed */
 .game-over-content {
   text-align: center;
@@ -2256,6 +2227,7 @@ canvas {
   width: 100%;
   max-width: 800px;
   margin-bottom: 2rem;
+  gap: 20px; /* Add gap to create space between elements */
 }
 
 .screen-header h2 {
@@ -2842,6 +2814,7 @@ canvas {
     background: rgba(0, 0, 0, 0.2);
     margin-bottom: 20px;
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    gap: 20px; /* Add gap to create space between elements */
 }
 
 /* Special header styling for weapon selection screen */
@@ -2857,4 +2830,90 @@ canvas {
     color: #ff4500;
     margin: 0;
     font-size: 22px;
+}
+
+#back-from-badges-btn {
+  outline: none;
+  padding: 8px 16px;
+  font-size: 0.9rem;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: var(--text);
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: 20px; /* Add margin to create space between text and button */
+}
+
+#back-from-badges-btn:focus {
+  box-shadow: none;
+}
+
+#back-from-badges-btn:active {
+  box-shadow: none;
+}
+
+#back-from-badges-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: translateY(-2px);
+}
+
+#back-from-badges-btn .button-icon {
+  width: 16px;
+  height: 16px;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+.instructions-container {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    padding: 2rem;
+    background: rgba(26, 26, 27, 0.85);
+    border: 2px solid var(--reddit-orangered);
+    border-radius: 20px;
+    box-shadow: 0 0 30px rgba(255, 69, 0, 0.2);
+    backdrop-filter: blur(10px);
+    animation: fadeIn 0.5s ease;
+    z-index: 1000;
+}
+
+.username-display {
+    color: var(--reddit-orangered);
+    font-size: 1.8rem;
+    font-weight: bold;
+    margin-bottom: 1rem;
+    text-shadow: 0 0 10px rgba(255, 69, 0, 0.3);
+}
+
+.username {
+    color: #fff;
+    position: relative;
+    display: inline-block;
+    padding: 0.2rem 0.8rem;
+    background: rgba(255, 69, 0, 0.2);
+    border-radius: 15px;
+    border: 1px solid rgba(255, 69, 0, 0.3);
+    animation: pulse 2s ease-in-out infinite;
+}
+
+.start-prompt {
+    color: #fff;
+    font-size: 1.4rem;
+    margin-top: 1rem;
+    opacity: 0.9;
+    text-shadow: 0 0 15px rgba(255, 255, 255, 0.5);
+}
+
+.loading-message {
+    color: #ccc;
+    font-size: 1.4rem;
+    margin-bottom: 1rem;
+    opacity: 0.8;
 }

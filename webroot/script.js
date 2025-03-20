@@ -209,6 +209,9 @@ function ensureLeaderboardDisplayed() {
 }
 
 function showScreen(screenId) {
+    // Clean up any existing game state first
+    resetGameState();
+    
     // Hide all screens first
     document.querySelectorAll('.screen').forEach(screen => {
         screen.classList.remove('active');
@@ -228,6 +231,15 @@ function showScreen(screenId) {
         if (screenId === 'leaderboard-screen') {
             console.log("Showing leaderboard screen, ensuring data is displayed");
             ensureLeaderboardDisplayed();
+        }
+
+        // Handle menu screen
+        if (screenId === 'menu') {
+            // Make sure menu elements are properly displayed
+            const menuScreen = document.getElementById('menu-screen');
+            if (menuScreen) {
+                menuScreen.classList.add('active');
+            }
         }
     } else {
         console.error(`Screen with ID '${screenId}' not found`);
@@ -285,6 +297,14 @@ function initMenu() {
         showScreen('leaderboard-screen');
         // This is now handled by the showScreen function through ensureLeaderboardDisplayed
     });
+
+    // Add event listener for badges button
+    const badgesBtn = document.getElementById('badges-btn');
+    if (badgesBtn) {
+        badgesBtn.addEventListener('click', () => {
+            showScreen('badges-screen');
+        });
+    }
 }
 
 // Update handleMouseMove to properly track mouse movement
@@ -808,30 +828,37 @@ function gameOver() {
             <div class="game-over-buttons">
                 <button class="menu-button primary" id="play-again-button">Play Again</button>
                 <button class="menu-button" id="view-leaderboard-button">Leaderboard</button>
-                <button class="menu-button" id="back-to-menu-button">Back to Menu</button>
+                <button class="menu-button" id="back-to-menu-button">Main Menu</button>
             </div>
         </div>
     `;
     gameOverContainer.appendChild(overlay);
     
-    // Add event listeners
+    // Add event listeners with improved menu navigation
     const playAgainButton = overlay.querySelector('#play-again-button');
     const viewLeaderboardButton = overlay.querySelector('#view-leaderboard-button');
     const backToMenuButton = overlay.querySelector('#back-to-menu-button');
     
     if (playAgainButton) {
-        playAgainButton.addEventListener('click', resetGame);
+        playAgainButton.addEventListener('click', () => {
+            resetGame();
+            showScreen('game-screen');
+        });
     }
     
     if (viewLeaderboardButton) {
         viewLeaderboardButton.addEventListener('click', () => {
-            resetGameState();
+            gameOverContainer.innerHTML = '';
             showScreen('leaderboard-screen');
         });
     }
     
     if (backToMenuButton) {
-        backToMenuButton.addEventListener('click', backToMenu);
+        backToMenuButton.addEventListener('click', () => {
+            gameOverContainer.innerHTML = '';
+            showScreen('menu-screen'); // Changed from 'menu' to 'menu-screen'
+            resetGameState(); // Make sure game state is properly cleaned up
+        });
     }
     
     // Animate overlay
@@ -945,21 +972,6 @@ function gameOver() {
 
     // Check achievements
     checkAchievements(finalScore);
-    
-    // Add share section to game over screen
-    const gameOverContent = document.querySelector('.game-over-content');
-    if (gameOverContent) {
-        const shareSection = document.createElement('div');
-        shareSection.className = 'share-section';
-        shareSection.innerHTML = `
-            <p class="share-text">Share your score:</p>
-            <div class="share-buttons">
-                <div class="share-button share-reddit" onclick="shareToReddit(${finalScore})"></div>
-                <div class="share-button share-twitter" onclick="shareToTwitter(${finalScore})"></div>
-            </div>
-        `;
-        gameOverContent.appendChild(shareSection);
-    }
 }
 
 function resetGame() {
@@ -1065,6 +1077,10 @@ function showHowToPlayModal() {
         modal.querySelector('.modal-content').style.opacity = '1';
     }, 50);
 }
+
+document.querySelector('.modal-close').addEventListener('click', function() {
+  document.getElementById('how-to-play-modal').classList.remove('active');
+});
 
 // Message handling functions
 async function postWebViewMessage(msg, attempt = 0) {
@@ -1313,26 +1329,37 @@ function formatDate(dateString) {
 
 // Clean up function to reset game state
 function resetGameState() {
-  // Remove game over overlay and reset game area
-  const gameOverContainer = document.getElementById('game-over-container');
-  gameOverContainer.innerHTML = '';
-  
-  gameArea.classList.remove('game-over');
-  gameArea.style.cursor = 'default';
-  
-  if (ball) {
-    ball.style.visibility = 'visible';
-  }
-  
-  if (paddleCursor) {
-    paddleCursor.style.display = 'none';
-  }
-  
-  // Stop game loop if it's running
-  if (animationFrameId) {
-    cancelAnimationFrame(animationFrameId);
-    animationFrameId = null;
-  }
+    // Remove game over overlay and reset game area
+    const gameOverContainer = document.getElementById('game-over-container');
+    if (gameOverContainer) {
+        gameOverContainer.innerHTML = '';
+    }
+    
+    // Reset game area state
+    gameArea.classList.remove('game-over');
+    gameArea.style.cursor = 'default';
+    gameArea.style.pointerEvents = 'auto';
+    
+    // Reset ball and paddle
+    if (ball) {
+        ball.style.visibility = 'hidden';
+    }
+    
+    if (paddleCursor) {
+        paddleCursor.style.display = 'none';
+    }
+    
+    // Stop game loop if it's running
+    if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+        animationFrameId = null;
+    }
+    
+    // Reset game variables
+    gameStarted = false;
+    currentScore = 0;
+    document.getElementById('score').textContent = '0';
+    resetMultiplier();
 }
 
 // Helper function to find the user's high score in the leaderboard
@@ -1501,8 +1528,7 @@ function createGameOverExplosion(x, y) {
     }
 }
 
-// Add these variables to the existing ones at the top
-let karma = 0;
+// Initialize game variables
 let achievements = {
   beginner: false,
   novice: false,
@@ -1562,9 +1588,6 @@ function unlockAchievement(achievementId, achievementName) {
   
   // Show Reddit-style award notification
   showAward('gold', `Achievement Unlocked: ${achievementName}`);
-  
-  // Add karma for unlocking achievement
-  addKarma(50);
 }
 
 // Show Reddit award notification
@@ -1592,31 +1615,6 @@ function showAward(type, text) {
       award.remove();
     }, 500);
   }, 3000);
-}
-
-// Add karma points
-function addKarma(points) {
-  karma += points;
-  document.getElementById('karma').textContent = karma;
-  
-  // Show karma indicator
-  const karmaIndicator = document.createElement('div');
-  karmaIndicator.className = 'karma-indicator karma-up';
-  karmaIndicator.textContent = `+${points}`;
-  
-  // Position near the karma counter
-  const karmaCounter = document.querySelector('.karma-counter');
-  const rect = karmaCounter.getBoundingClientRect();
-  
-  karmaIndicator.style.left = `${rect.left + rect.width / 2}px`;
-  karmaIndicator.style.top = `${rect.top}px`;
-  
-  document.body.appendChild(karmaIndicator);
-  
-  // Remove after animation completes
-  setTimeout(() => {
-    karmaIndicator.remove();
-  }, 1000);
 }
 
 // Share functions
@@ -1654,9 +1652,6 @@ function handleBallHit() {
   
   // Show score popup
   showScorePopup(ball.x, ball.y, scoreGain);
-  
-  // Add karma for each hit
-  addKarma(1);
   
   // Check for first bounce achievement
   if (!achievements.firstBounce) {
@@ -1972,6 +1967,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (startGameWithWeaponsBtn) {
         startGameWithWeaponsBtn.addEventListener('click', startGameWithWeapons);
+    }
+    
+    const backFromBadgesBtn = document.getElementById('back-from-badges-btn');
+    if (backFromBadgesBtn) {
+      backFromBadgesBtn.addEventListener('click', function() {
+        // Hide badges screen
+        document.getElementById('badges-screen').classList.remove('active');
+        
+        // Show menu screen
+        const menuScreen = document.getElementById('menu-screen');
+        if (menuScreen) {
+          menuScreen.classList.add('active');
+        }
+      });
     }
 });
 
@@ -2325,18 +2334,22 @@ function initGame() {
     if (instructions) {
         // Use the authenticated Reddit username in the instructions
         if (currentUsername) {
-            instructions.innerHTML = `Playing as <span class="username">${currentUsername}</span>. <p>Click to start!</p>`;
+            instructions.innerHTML = `
+                <div class="instructions-container">
+                    <div class="username-display">Playing as <span class="username">${currentUsername}</span></div>
+                    <div class="start-prompt">Click to start!</div>
+                </div>
+            `;
         } else {
             // If username is not yet available, show loading state
-            instructions.innerHTML = `<p>Loading Reddit username...</p><p>Click to start!</p>`;
+            instructions.innerHTML = `
+                <div class="instructions-container">
+                    <div class="loading-message">Loading Reddit username...</div>
+                    <div class="start-prompt">Click to start!</div>
+                </div>
+            `;
         }
         instructions.style.display = 'block';
-    }
-
-    // Initialize karma display
-    const karmaElement = document.getElementById('karma');
-    if (karmaElement) {
-        karmaElement.textContent = karma.toString();
     }
     
     console.log("Game initialized successfully");
@@ -2395,5 +2408,19 @@ document.addEventListener('DOMContentLoaded', function() {
 
   if (startGameWithWeaponsBtn) {
     startGameWithWeaponsBtn.addEventListener('click', startGameWithWeapons);
+  }
+  
+  const backFromBadgesBtn = document.getElementById('back-from-badges-btn');
+  if (backFromBadgesBtn) {
+    backFromBadgesBtn.addEventListener('click', function() {
+      // Hide badges screen
+      document.getElementById('badges-screen').classList.remove('active');
+      
+      // Show menu screen
+      const menuScreen = document.getElementById('menu-screen');
+      if (menuScreen) {
+        menuScreen.classList.add('active');
+      }
+    });
   }
 });

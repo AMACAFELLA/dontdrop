@@ -175,16 +175,79 @@
   align-items: center !important;
   width: 100% !important;
   max-width: 800px !important;
-  margin-bottom: 20px !important;
-  padding: 0 5px !important;
+  margin-bottom: 30px !important;
+  padding: 15px 20px !important;
+  background: rgba(26, 26, 27, 0.85) !important;
+  border-radius: 12px !important;
+  border: 1px solid rgba(255, 69, 0, 0.3) !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2) !important;
+  backdrop-filter: blur(10px) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
+  transition: all 0.3s ease !important;
+}
+
+.screen-header:hover {
+  border-color: rgba(255, 69, 0, 0.5) !important;
+  box-shadow: 0 6px 25px rgba(255, 69, 0, 0.15) !important;
+  transform: translateY(-2px) !important;
 }
 
 .screen-header h2 {
-  font-size: 28px !important;
+  font-size: 32px !important;
+  font-weight: 700 !important;
   color: white !important;
-  text-shadow: 0 0 10px rgba(255, 69, 0, 0.5) !important;
+  text-shadow: 0 0 15px rgba(255, 69, 0, 0.5) !important;
   margin: 0 !important;
   padding: 0 !important;
+  letter-spacing: 0.5px !important;
+  background: linear-gradient(135deg, #ffffff, #ff8c5a) !important;
+  -webkit-background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  position: relative !important;
+}
+
+.screen-header .back-button {
+  background: linear-gradient(135deg, #ff5700, #ff8c5a) !important;
+  color: white !important;
+  border: none !important;
+  padding: 10px 20px !important;
+  border-radius: 25px !important;
+  font-weight: 600 !important;
+  font-size: 16px !important;
+  cursor: pointer !important;
+  transition: all 0.3s ease !important;
+  box-shadow: 0 4px 15px rgba(255, 69, 0, 0.2) !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+}
+
+.screen-header .back-button:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 6px 20px rgba(255, 69, 0, 0.3) !important;
+  background: linear-gradient(135deg, #ff6a33, #ff9e75) !important;
+}
+
+.screen-header .back-button:active {
+  transform: translateY(1px) !important;
+  box-shadow: 0 2px 10px rgba(255, 69, 0, 0.2) !important;
+}
+
+@media (max-width: 700px) {
+  .screen-header {
+    margin: 10px !important;
+    padding: 12px 15px !important;
+    margin-bottom: 20px !important;
+  }
+
+  .screen-header h2 {
+    font-size: 24px !important;
+  }
+
+  .screen-header .back-button {
+    padding: 8px 15px !important;
+    font-size: 14px !important;
+  }
 }
 
 /* Empty leaderboard state */
@@ -432,7 +495,7 @@
 .combo-display {
   position: absolute;
   top: 10px;
-  right: 10px;
+  left: 10px;  /* Changed from right: 10px to left: 10px */
   background: rgba(0, 0, 0, 0.7);
   border: 2px solid #ff4500;
   border-radius: 8px;
@@ -681,4 +744,18 @@
 .paddle-cursor, #ball {
   background-repeat: no-repeat !important;
   background-size: contain !important;
+}
+
+/* Back to menu button styling */
+#back-to-menu-btn {
+  margin-top: 20px;
+  padding: 10px 20px;
+  font-size: 0.9em;
+  border-radius: 30px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--text);
+  transition: all 0.2s ease;
+  width: auto;
+  align-self: center;
 }
