@@ -76,10 +76,10 @@
         </div>
       </div>
 
-      <!-- Weapon Selection Screen -->
-      <div id="weapon-selection-screen" class="screen">
+      <!-- Paddle Selection Screen -->
+      <div id="paddle-selection-screen" class="screen">
         <div class="screen-header">
-          <h2>Choose Your Weapons</h2>
+          <h2>Choose Your Paddle</h2>
           <button id="back-from-weapons-btn" class="back-button">
             <span class="button-icon back"></span>
             Back
@@ -87,13 +87,30 @@
         </div>
         <div class="weapon-selection-content">
           <div class="weapon-section">
-            <h3>Select Your Paddle</h3>
             <div id="paddle-selection" class="weapon-grid">
               <!-- Paddle options will be populated by JavaScript -->
             </div>
           </div>
+          <button id="next-to-ball-btn" class="menu-button primary">
+            <span class="button-content">
+              Next
+              <span class="button-icon play"></span>
+            </span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Ball Selection Screen -->
+      <div id="ball-selection-screen" class="screen">
+        <div class="screen-header">
+          <h2>Choose Your Ball</h2>
+          <button id="back-to-paddle-btn" class="back-button">
+            <span class="button-icon back"></span>
+            Back
+          </button>
+        </div>
+        <div class="weapon-selection-content">
           <div class="weapon-section">
-            <h3>Select Your Ball</h3>
             <div id="ball-selection" class="weapon-grid">
               <!-- Ball options will be populated by JavaScript -->
             </div>

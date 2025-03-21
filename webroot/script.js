@@ -1140,38 +1140,25 @@ function showLeaderboardError(message) {
 // Request leaderboard data from Devvit
 function refreshLeaderboard() {
     const now = Date.now();
-    
-    // Prevent rapid consecutive requests
     if (leaderboardRequestInProgress || (now - lastLeaderboardRequestTime < LEADERBOARD_REQUEST_DEBOUNCE)) {
-        console.log("Leaderboard request already in progress or too recent, waiting...");
+        console.log("Leaderboard request already in progress or too recent");
         return;
     }
     
-    console.log("Refreshing leaderboard data...");
     leaderboardRequestInProgress = true;
     lastLeaderboardRequestTime = now;
     
-    // Show loading indicator
-    showLeaderboardLoading("Loading leaderboard data...");
+    // Get active tab
+    const activeTab = document.querySelector('.tab-button.active');
+    const tab = activeTab ? activeTab.getAttribute('data-tab') : 'this-subreddit';
     
-    // Clear any existing timeout
-    if (errorRetryTimeout) {
-        clearTimeout(errorRetryTimeout);
-        errorRetryTimeout = null;
-    }
-    
-    // Request leaderboard data
     postWebViewMessage({ 
-        type: 'getLeaderboard'
-    })
-    .then(() => {
-        console.log("Leaderboard refresh request sent successfully");
-        // Let the message handler handle the response - no fallback needed
+        type: 'fetchLeaderboard',
+        data: { tab }
     })
     .catch(error => {
-        console.error("Failed to request leaderboard data:", error);
+        console.error("Failed to fetch leaderboard:", error);
         leaderboardRequestInProgress = false;
-        showLeaderboardError("Failed to load leaderboard. Please try again.");
     });
 }
 
@@ -1991,32 +1978,82 @@ function showWeaponSelection() {
         screen.classList.remove('active');
     });
     
-    // Then show only the weapon selection screen
-    const weaponScreen = document.getElementById('weapon-selection-screen');
+    // Show paddle selection screen first
+    const paddleScreen = document.getElementById('paddle-selection-screen');
     
-    if (!weaponScreen) {
-        console.error('Weapon selection screen not found');
+    if (!paddleScreen) {
+        console.error('Paddle selection screen not found');
         return;
     }
     
-    weaponScreen.classList.add('active');
+    paddleScreen.classList.add('active');
     
-    // Populate weapon selection UI
-    populateWeaponSelection();
+    // Populate paddle selection UI
+    populatePaddleSelection();
 }
 
-function populateWeaponSelection() {
-    const paddleContainer = document.getElementById('paddle-selection');
-    const ballContainer = document.getElementById('ball-selection');
+function createWeaponTooltip(weapon) {
+    const tooltip = document.createElement('div');
+    tooltip.className = 'weapon-tooltip';
     
-    if (!paddleContainer || !ballContainer) {
-        console.error('Weapon selection containers not found');
+    let powerDescription = '';
+    if (weapon.specialPower) {
+        switch(weapon.specialPower) {
+            case "extraBounce":
+                powerDescription = "30% chance to gain extra bounce height on hit";
+                break;
+            case "speedBoost":
+                powerDescription = "30% chance to gain a speed boost on hit";
+                break;
+            case "doublePoints":
+                powerDescription = "25% chance to score double points on hit";
+                break;
+            case "comboExtender":
+                powerDescription = "30% chance to extend combo duration";
+                break;
+        }
+    }
+    
+    tooltip.innerHTML = `
+        <div class="tooltip-header">${weapon.name}</div>
+        <div class="tooltip-stats">
+            ${weapon.bounceHeight ? `<div class="tooltip-stat">
+                <span>Bounce Power:</span>
+                <span>${weapon.bounceHeight}x</span>
+            </div>` : ''}
+            ${weapon.speedMultiplier ? `<div class="tooltip-stat">
+                <span>Speed:</span>
+                <span>${weapon.speedMultiplier}x</span>
+            </div>` : ''}
+            ${weapon.bounceMultiplier ? `<div class="tooltip-stat">
+                <span>Bounce:</span>
+                <span>${weapon.bounceMultiplier}x</span>
+            </div>` : ''}
+            ${weapon.gravity ? `<div class="tooltip-stat">
+                <span>Gravity:</span>
+                <span>${weapon.gravity}x</span>
+            </div>` : ''}
+        </div>
+        ${powerDescription ? `
+            <div class="tooltip-powers">
+                <div class="power-description">${powerDescription}</div>
+            </div>
+        ` : ''}
+    `;
+    
+    return tooltip;
+}
+
+function populatePaddleSelection() {
+    const paddleContainer = document.getElementById('paddle-selection');
+    
+    if (!paddleContainer) {
+        console.error('Paddle selection container not found');
         return;
     }
     
     // Clear existing content
     paddleContainer.innerHTML = '';
-    ballContainer.innerHTML = '';
     
     // Populate paddles
     Object.entries(weapons.paddles).forEach(([key, paddle]) => {
@@ -2037,12 +2074,27 @@ function populateWeaponSelection() {
             </div>
         `;
         
+        // Add tooltip
+        paddleElement.appendChild(createWeaponTooltip(paddle));
+        
         if (isUnlocked) {
             paddleElement.addEventListener('click', () => selectPaddle(paddle));
         }
         
         paddleContainer.appendChild(paddleElement);
     });
+}
+
+function populateBallSelection() {
+    const ballContainer = document.getElementById('ball-selection');
+    
+    if (!ballContainer) {
+        console.error('Ball selection container not found');
+        return;
+    }
+    
+    // Clear existing content
+    ballContainer.innerHTML = '';
     
     // Populate balls
     Object.entries(weapons.balls).forEach(([key, ball]) => {
@@ -2063,6 +2115,9 @@ function populateWeaponSelection() {
             </div>
         `;
         
+        // Add tooltip
+        ballElement.appendChild(createWeaponTooltip(ball));
+        
         if (isUnlocked) {
             ballElement.addEventListener('click', () => selectBall(ball));
         }
@@ -2071,47 +2126,51 @@ function populateWeaponSelection() {
     });
 }
 
+function showBallSelection() {
+    // Hide all screens
+    document.querySelectorAll('.screen').forEach(screen => {
+        screen.classList.remove('active');
+    });
+    
+    // Show ball selection screen
+    const ballScreen = document.getElementById('ball-selection-screen');
+    if (ballScreen) {
+        ballScreen.classList.add('active');
+        populateBallSelection();
+    }
+}
+
 function selectPaddle(paddle) {
     console.log("Selected paddle:", paddle.name, "with image:", paddle.image);
     selectedPaddle = paddle;
-    populateWeaponSelection();
+    populatePaddleSelection();
     playSound('select');
 }
 
 function selectBall(ball) {
     console.log("Selected ball:", ball.name, "with image:", ball.image);
     selectedBall = ball;
-    populateWeaponSelection();
+    populateBallSelection();
     playSound('select');
 }
 
-function startGameWithWeapons() {
-    console.log("Starting game with selected weapons:");
-    console.log("Paddle:", selectedPaddle.name, selectedPaddle.image);
-    console.log("Ball:", selectedBall.name, selectedBall.image);
-    
-    // Hide all screens first
-    document.querySelectorAll('.screen').forEach(screen => {
-        screen.classList.remove('active');
-    });
-    
-    // Show only the game screen
-    const gameScreen = document.getElementById('game-screen');
-    if (gameScreen) {
-        gameScreen.classList.add('active');
+// Update document.addEventListener('DOMContentLoaded') to include new event listeners
+document.addEventListener('DOMContentLoaded', () => {
+    // ...existing code...
+
+    // Add navigation button event listeners
+    const nextToBallBtn = document.getElementById('next-to-ball-btn');
+    if (nextToBallBtn) {
+        nextToBallBtn.addEventListener('click', showBallSelection);
     }
-    
-    // Initialize the game with selected weapons
-    initGame();
-    
-    // Double-check that our weapon styles are applied after initialization
-    setTimeout(() => {
-        forceApplyWeaponStyles();
-        
-        // Add a second force apply with a longer delay for extra reliability
-        setTimeout(() => forceApplyWeaponStyles(), 300);
-    }, 50);
-}
+
+    const backToPaddleBtn = document.getElementById('back-to-paddle-btn');
+    if (backToPaddleBtn) {
+        backToPaddleBtn.addEventListener('click', showWeaponSelection);
+    }
+
+    // ...existing code...
+});
 
 // Create a persistent combo display
 function createComboDisplay() {
@@ -2423,4 +2482,248 @@ document.addEventListener('DOMContentLoaded', function() {
       }
     });
   }
+});
+
+document.addEventListener('DOMContentLoaded', () => {
+    // Initialize menu buttons
+    const startBtn = document.getElementById('start-btn');
+    const leaderboardBtn = document.getElementById('leaderboard-btn');
+    const badgesBtn = document.getElementById('badges-btn');
+    const weaponsBtn = document.getElementById('weapons-btn');
+    const howToPlayBtn = document.getElementById('how-to-play-btn');
+    const backFromWeaponsBtn = document.getElementById('back-from-weapons-btn');
+    const backFromBadgesBtn = document.getElementById('back-from-badges-btn');
+    const backFromLeaderboardBtn = document.getElementById('back-from-leaderboard-btn');
+    const startGameWithWeaponsBtn = document.getElementById('start-game-with-weapons-btn');
+    const nextToBallBtn = document.getElementById('next-to-ball-btn');
+    const backToPaddleBtn = document.getElementById('back-to-paddle-btn');
+
+    function hideAllScreens() {
+        document.querySelectorAll('.screen').forEach(screen => {
+            screen.classList.remove('active');
+        });
+    }
+
+    function showMenu() {
+        hideAllScreens();
+        document.getElementById('menu-screen').classList.add('active');
+    }
+
+    function startGame() {
+        hideAllScreens();
+        document.getElementById('game-screen').classList.add('active');
+        initGame(); // Initialize game after showing screen
+    }
+
+    function showLeaderboard() {
+        hideAllScreens();
+        document.getElementById('leaderboard-screen').classList.add('active');
+        refreshLeaderboard(); // Fetch fresh leaderboard data
+    }
+
+    function showBadges() {
+        hideAllScreens();
+        document.getElementById('badges-screen').classList.add('active');
+    }
+
+    function showWeapons() {
+        hideAllScreens();
+        document.getElementById('paddle-selection-screen').classList.add('active');
+        populatePaddleSelection();
+    }
+
+    // Event listeners for menu buttons
+    startBtn?.addEventListener('click', () => {
+        hideAllScreens();
+        document.getElementById('paddle-selection-screen').classList.add('active');
+        populatePaddleSelection();
+    });
+    
+    leaderboardBtn?.addEventListener('click', showLeaderboard);
+    badgesBtn?.addEventListener('click', showBadges);
+    weaponsBtn?.addEventListener('click', showWeapons);
+    backFromWeaponsBtn?.addEventListener('click', showMenu);
+    backFromBadgesBtn?.addEventListener('click', showMenu);
+    backFromLeaderboardBtn?.addEventListener('click', showMenu);
+    startGameWithWeaponsBtn?.addEventListener('click', startGame);
+    nextToBallBtn?.addEventListener('click', () => {
+        hideAllScreens();
+        document.getElementById('ball-selection-screen').classList.add('active');
+        populateBallSelection();
+    });
+    backToPaddleBtn?.addEventListener('click', showWeapons);
+
+    // Initialize the menu screen
+    showMenu();
+
+    // ...rest of the initialization code...
+});
+
+// Update start game function to ensure proper weapon initialization
+function startGameWithWeapons() {
+    if (!selectedPaddle || !selectedBall) {
+        console.error('No weapons selected!');
+        return;
+    }
+    hideAllScreens();
+    document.getElementById('game-screen').classList.add('active');
+    initGame();
+}
+
+// Update leaderboard tabs functionality
+function setupLeaderboardTabs() {
+    const tabButtons = document.querySelectorAll('.tab-button');
+    tabButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            // Update active tab
+            tabButtons.forEach(btn => btn.classList.remove('active'));
+            button.classList.add('active');
+            
+            // Show corresponding content
+            const tabId = button.getAttribute('data-tab');
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.toggle('active', content.id === `${tabId}-leaderboard`);
+            });
+            
+            // Fetch data for this tab
+            refreshLeaderboard();
+        });
+    });
+}
+
+// Initialize leaderboard on load
+document.addEventListener('DOMContentLoaded', () => {
+    setupLeaderboardTabs();
+    // ... rest of the initialization code ...
+});
+
+function refreshLeaderboard() {
+    const now = Date.now();
+    if (leaderboardRequestInProgress || (now - lastLeaderboardRequestTime < LEADERBOARD_REQUEST_DEBOUNCE)) {
+        console.log("Leaderboard request already in progress or too recent");
+        return;
+    }
+
+    leaderboardRequestInProgress = true;
+    lastLeaderboardRequestTime = now;
+
+    // Get active tab
+    const activeTab = document.querySelector('.tab-button.active');
+    const tab = activeTab ? activeTab.getAttribute('data-tab') : 'this-subreddit';
+
+    postWebViewMessage({
+        type: 'fetchLeaderboard',
+        data: { tab }
+    }).catch(error => {
+        console.error("Failed to fetch leaderboard:", error);
+        leaderboardRequestInProgress = false;
+    });
+}
+
+function renderLeaderboard(data) {
+    if (!data || !data.tab || !Array.isArray(data.entries)) {
+        console.error('Invalid leaderboard data received:', data);
+        return;
+    }
+
+    const { tab, entries } = data;
+    const tabBody = document.getElementById(`${tab}-leaderboard-body`);
+    if (!tabBody) {
+        console.error('Could not find leaderboard body element for tab:', tab);
+        return;
+    }
+
+    // Clear existing entries
+    tabBody.innerHTML = '';
+
+    // Handle empty leaderboard
+    if (!entries || entries.length === 0) {
+        const emptyRow = document.createElement('tr');
+        const emptyCell = document.createElement('td');
+        emptyCell.colSpan = tab === 'all-subreddits' ? 4 : 3;
+        emptyCell.className = 'chalk-text chalk-white empty-state';
+        emptyCell.textContent = 'No scores yet! Be the first to play!';
+        emptyRow.appendChild(emptyCell);
+        tabBody.appendChild(emptyRow);
+        return;
+    }
+
+    // Add entries to the table
+    entries.forEach((entry, index) => {
+        const row = document.createElement('tr');
+        row.className = entry.username === currentUsername ? 'current-user' : '';
+
+        // Rank cell with medal
+        const rankCell = document.createElement('td');
+        let rankText = (index + 1).toString();
+        if (index === 0) rankText = '🥇 ' + rankText;
+        else if (index === 1) rankText = '🥈 ' + rankText;
+        else if (index === 2) rankText = '🥉 ' + rankText;
+        rankCell.textContent = rankText;
+        rankCell.className = 'chalk-text chalk-yellow';
+        row.appendChild(rankCell);
+
+        // Username cell
+        const usernameCell = document.createElement('td');
+        usernameCell.textContent = entry.username;
+        usernameCell.className = 'chalk-text chalk-white';
+        row.appendChild(usernameCell);
+
+        // Score cell
+        const scoreCell = document.createElement('td');
+        scoreCell.textContent = entry.score.toLocaleString();
+        scoreCell.className = 'chalk-text chalk-yellow';
+        row.appendChild(scoreCell);
+
+        // Add subreddit cell for all-subreddits tab
+        if (tab === 'all-subreddits') {
+            const subredditCell = document.createElement('td');
+            subredditCell.textContent = entry.subreddit || 'Unknown';
+            subredditCell.className = 'chalk-text chalk-white';
+            row.appendChild(subredditCell);
+        }
+
+        tabBody.appendChild(row);
+    });
+}
+
+// Initialize when document is ready
+document.addEventListener('DOMContentLoaded', () => {
+    // Initialize game elements
+    gameArea = document.getElementById('gameArea');
+    ball = document.getElementById('ball');
+    instructions = document.getElementById('instructions');
+    
+    // Set default weapons if not already set
+    if (!selectedPaddle) selectedPaddle = weapons.paddles.default;
+    if (!selectedBall) selectedBall = weapons.balls.default;
+
+    // Initialize menu buttons and event listeners
+    const startBtn = document.getElementById('start-btn');
+    const leaderboardBtn = document.getElementById('leaderboard-btn');
+    const badgesBtn = document.getElementById('badges-btn');
+    const weaponsBtn = document.getElementById('weapons-btn');
+    const howToPlayBtn = document.getElementById('how-to-play-btn');
+    
+    function hideAllScreens() {
+        document.querySelectorAll('.screen').forEach(screen => {
+            screen.classList.remove('active');
+        });
+    }
+
+    // Initialize weapon selection
+    if (startBtn) {
+        startBtn.addEventListener('click', () => {
+            hideAllScreens();
+            document.getElementById('paddle-selection-screen').classList.add('active');
+            populatePaddleSelection();
+        });
+    }
+
+    // Initialize leaderboard functionality
+    setupLeaderboardTabs();
+
+    // Show menu screen initially
+    hideAllScreens();
+    document.getElementById('menu-screen').classList.add('active');
 });

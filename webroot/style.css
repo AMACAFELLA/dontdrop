@@ -1311,7 +1311,7 @@ canvas {
   position: absolute;
   width: 20px;
   height: 20px;
-  background: var(--accent);
+  background: var (--accent);
   border-radius: 50%;
   top: 50%;
   left: 50%;
@@ -2679,6 +2679,7 @@ canvas {
 .weapon-item:hover {
     transform: translateY(-5px);
     background: rgba(255, 255, 255, 0.15);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
 }
 
 .weapon-item.selected {
@@ -2689,6 +2690,7 @@ canvas {
 .weapon-item.locked {
     opacity: 0.5;
     cursor: not-allowed;
+    filter: grayscale(0.8);
 }
 
 .weapon-item img {
@@ -2696,6 +2698,11 @@ canvas {
     height: 100px;
     object-fit: contain;
     margin-bottom: 10px;
+    transition: transform 0.3s ease;
+}
+
+.weapon-item:hover img {
+    transform: scale(1.1);
 }
 
 .weapon-info {
@@ -2716,60 +2723,49 @@ canvas {
 
 .weapon-stats {
     display: flex;
-    justify-content: space-around;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px;
     font-size: 12px;
     color: #ff4500;
 }
 
 .weapon-stats span {
     background: rgba(255, 69, 0, 0.1);
-    padding: 3px 8px;
+    padding: 5px 10px;
     border-radius: 4px;
+    transition: all 0.3s ease;
 }
 
-#start-game-with-weapons-btn {
-    display: block;
-    margin: 40px auto;
-    padding: 15px 40px;
-    font-size: 20px;
+.weapon-item:hover .weapon-stats span {
+    background: rgba(255, 69, 0, 0.2);
+    transform: scale(1.05);
 }
 
-.instruction-icon.weapon::before {
-    content: "";
+/* Add checkmark for selected items */
+.weapon-item.selected::after {
+    content: '✓';
     position: absolute;
-    width: 70%;
-    height: 70%;
-    top: 15%;
-    left: 15%;
-    background: linear-gradient(135deg, #ff4500, #ff7e1c);
-    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 2L1 21h22L12 2zm0 6l7.53 13H4.47L12 8z'/%3E%3C/svg%3E");
-    mask-size: contain;
-    mask-repeat: no-repeat;
-    mask-position: center;
-    -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 2L1 21h22L12 2zm0 6l7.53 13H4.47L12 8z'/%3E%3C/svg%3E");
-    -webkit-mask-size: contain;
-    -webkit-mask-repeat: no-repeat;
-    -webkit-mask-position: center;
-    animation: weaponIconAnim 2s ease-in-out infinite;
+    top: 5px;
+    right: 5px;
+    width: 20px;
+    height: 20px;
+    background: #ff4500;
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: bold;
 }
 
-@keyframes weaponIconAnim {
-    0% { transform: scale(1); }
-    50% { transform: scale(1.1) rotate(5deg); }
-    100% { transform: scale(1); }
-}
-
-/* Responsive styles for weapon selection */
+/* Responsive styles */
 @media (max-width: 768px) {
     .weapon-grid {
         grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
         gap: 10px;
         padding: 10px;
-    }
-    
-    .weapon-section h3 {
-        font-size: 20px;
-        margin-bottom: 15px;
     }
     
     .weapon-item img {
@@ -2783,26 +2779,10 @@ canvas {
     
     .weapon-info p {
         font-size: 12px;
-        margin-bottom: 5px;
     }
     
     .weapon-stats {
         font-size: 10px;
-    }
-    
-    .weapon-stats span {
-        padding: 2px 5px;
-    }
-    
-    .weapon-selection-content {
-        padding: 10px;
-        max-height: calc(100vh - 80px);
-    }
-    
-    #start-game-with-weapons-btn {
-        margin: 20px auto;
-        padding: 10px 30px;
-        font-size: 16px;
     }
 }
 
@@ -2916,4 +2896,86 @@ canvas {
     font-size: 1.4rem;
     margin-bottom: 1rem;
     opacity: 0.8;
+}
+
+/* Weapon tooltip styles */
+.weapon-tooltip {
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(26, 26, 27, 0.95);
+    padding: 15px;
+    border-radius: 8px;
+    border: 1px solid #ff4500;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    width: 220px;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+    z-index: 100;
+    pointer-events: none;
+    margin-top: 10px;
+}
+
+.weapon-item:hover .weapon-tooltip {
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(-50%) translateY(5px);
+}
+
+.tooltip-header {
+    font-size: 16px;
+    color: #ff4500;
+    margin-bottom: 10px;
+    font-weight: bold;
+}
+
+.tooltip-stats {
+    margin-bottom: 10px;
+}
+
+.tooltip-stat {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 5px;
+    color: #ffffff;
+    font-size: 14px;
+}
+
+.tooltip-powers {
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    padding-top: 10px;
+}
+
+.power-description {
+    color: #cccccc;
+    font-size: 13px;
+    line-height: 1.4;
+    font-style: italic;
+}
+
+/* Lock overlay for unavailable weapons */
+.weapon-item.locked::before {
+    content: '🔒';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 32px;
+    color: #ff4500;
+    text-shadow: 0 0 10px rgba(255, 69, 0, 0.5);
+    z-index: 2;
+}
+
+.weapon-item.locked::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    border-radius: 10px;
+    z-index: 1;
 }
