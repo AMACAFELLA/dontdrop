@@ -2727,3 +2727,25 @@ document.addEventListener('DOMContentLoaded', () => {
     hideAllScreens();
     document.getElementById('menu-screen').classList.add('active');
 });
+
+// Scheduled Leaderboard community post
+document.addEventListener('DOMContentLoaded', () => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const dataParam = urlParams.get('data');
+    
+    if (dataParam) {
+      const data = JSON.parse(decodeURIComponent(dataParam));
+      
+      if (window.location.pathname.includes('leaderboard.html')) {
+        renderLeaderboard(data);
+      } else if (window.location.pathname.includes('top-player.html')) {
+        renderTopPlayer(data);
+      }
+    }
+    
+    const dateElement = document.getElementById('current-date');
+    if (dateElement) {
+      const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+      dateElement.textContent = new Date().toLocaleDateString(undefined, options);
+    }
+  });

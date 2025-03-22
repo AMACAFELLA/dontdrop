@@ -1,4 +1,4 @@
-import { Devvit, useWebView } from '@devvit/public-api';
+import { Devvit, useWebView, Context } from '@devvit/public-api';
 import type { WebViewMessage, DevvitMessage, LeaderboardEntry } from './message.ts';
 import { LoadingAnimation } from './components/LoadingAnimation.js';
 
@@ -74,10 +74,53 @@ const DontDropGame = ({ context }: { context: Devvit.Context }) => {
               // Update Redis leaderboard
               const currentScore = await context.redis.zScore(REDIS_KEYS.LEADERBOARD, username);
               if (!currentScore || finalScore > currentScore) {
+                // Get previous top 5 before updating
+                const previousTop5 = await context.redis.zRange(REDIS_KEYS.LEADERBOARD, 0, 4, {
+                  reverse: true,
+                  by: "rank"
+                });
+
+                // Update the score
                 await context.redis.zAdd(REDIS_KEYS.LEADERBOARD, { 
                   member: username, 
                   score: finalScore 
                 });
+
+                // Get new top 5 after updating
+                const newTop5 = await context.redis.zRange(REDIS_KEYS.LEADERBOARD, 0, 4, {
+                  reverse: true,
+                  by: "rank"
+                });
+
+                // Find player's new rank in top 5
+                const playerRank = newTop5.findIndex(entry => entry.member === username) + 1;
+                
+                // If player made it into top 5, schedule announcement
+                if (playerRank > 0 && playerRank <= 5) {
+                  // Find who they replaced (if anyone)
+                  let previousPlayer = null;
+                  if (previousTop5 && previousTop5.length >= playerRank) {
+                    const replacedEntry = previousTop5[playerRank - 1];
+                    if (replacedEntry && replacedEntry.member !== username) {
+                      previousPlayer = {
+                        username: replacedEntry.member,
+                        score: replacedEntry.score
+                      };
+                    }
+                  }
+
+                  // Schedule the announcement post
+                  await context.scheduler.runJob({
+                    name: 'announce_top_player',
+                    data: {
+                      username,
+                      score: finalScore,
+                      rank: playerRank,
+                      previousPlayer
+                    },
+                    runAt: new Date() // Run immediately
+                  });
+                }
 
                 // Update user data
                 const userKey = `${REDIS_KEYS.USER_PREFIX}${username}`;
@@ -233,54 +276,34 @@ Devvit.addMenuItem({
   }
 });
 
-// Scheduler job to post about new top 5 player
+// Weekly leaderboard update scheduler job
 Devvit.addSchedulerJob({
-  name: 'new_top_player',
-  onRun: async (event, context) => {
-    try {
-      const data = event.data as { username: string; score: number; rank: number };
-      const { username, score, rank } = data;
-      const subreddit = await context.reddit.getCurrentSubreddit();
-      
-      await context.reddit.submitPost({
-        subredditName: subreddit.name,
-        title: `🏆 ${username} just reached rank #${rank} on the Don't Drop leaderboard!`,
-        text: `**${username}** just scored **${score}** points and is now ranked #${rank} on our Don't Drop leaderboard!\n\nCan you beat this score? Play now and show off your skills!`,
-      });
-      
-      console.log(`Posted about new top player ${username} with rank ${rank}`);
-    } catch (error) {
-      console.error('Error posting about new top player:', error);
-    }
-  },
-});
-
-// Scheduler job to post weekly leaderboard
-Devvit.addSchedulerJob({
-  name: 'weekly_leaderboard',
+  name: 'weekly_leaderboard_update',
   onRun: async (_, context) => {
     try {
-      const subreddit = await context.reddit.getCurrentSubreddit();
-      const leaderboardEntries = await context.redis.zRange(REDIS_KEYS.LEADERBOARD, 0, 4, {
+      // Get top 10 players from Redis
+      const leaderboardEntries = await context.redis.zRange('leaderboard', 0, 9, {
         reverse: true,
-        by: "rank"
+        by: 'rank'
       });
-
-      if (!leaderboardEntries || leaderboardEntries.length === 0) {
-        console.log('No players in leaderboard, skipping weekly post');
-        return;
-      }
-
-      let leaderboardText = '# This Week\'s Top Don\'t Drop Players\n\n';
-      leaderboardEntries.forEach((entry, index) => {
-        leaderboardText += `${index + 1}. **${entry.member}** with a score of **${entry.score}**\n`;
-      });
-      leaderboardText += '\nCan you beat these scores? Play now and climb the leaderboard!';
-
+      
+      // Format and post the leaderboard
+      const formattedEntries = leaderboardEntries.map(entry => ({
+        member: entry.member,
+        score: entry.score
+      }));
+      
+      const leaderboardData = encodeURIComponent(JSON.stringify(formattedEntries));
+      const subreddit = await context.reddit.getCurrentSubreddit();
+      
       await context.reddit.submitPost({
+        title: `📊 Weekly Don't Drop Leaderboard Update - Top Players 🏆`,
         subredditName: subreddit.name,
-        title: '🏆 Weekly Don\'t Drop Leaderboard - Top Players 🏆',
-        text: leaderboardText,
+        preview: (
+          <blocks height="tall">
+            <webview url={`https://raw.githubusercontent.com/YourUsername/dontdrop/main/webroot/leaderboard.html?data=${leaderboardData}`} />
+          </blocks>
+        ),
       });
     } catch (error) {
       console.error('Error posting weekly leaderboard:', error);
@@ -288,22 +311,87 @@ Devvit.addSchedulerJob({
   }
 });
 
-// Install trigger to schedule weekly leaderboard post
+// Top 5 player announcement types and functions
+type TopPlayerData = {
+  username: string;
+  score: number;
+  rank: number;
+  previousPlayer?: {
+    username: string;
+    score: number;
+  };
+};
+
+// Scheduler job to announce new top 5 player
+Devvit.addSchedulerJob({
+  name: 'announce_top_player',
+  onRun: async (event, context) => {
+    try {
+      const data = event.data as TopPlayerData;
+      const playerData = encodeURIComponent(JSON.stringify(data));
+      const subreddit = await context.reddit.getCurrentSubreddit();
+      
+      await context.reddit.submitPost({
+        title: `🎮 ${data.username} just reached #${data.rank} on Don't Drop! 🏆`,
+        subredditName: subreddit.name,
+        preview: (
+          <blocks height="regular">
+            <webview url={`https://raw.githubusercontent.com/YourUsername/dontdrop/main/webroot/top-player.html?data=${playerData}`} />
+          </blocks>
+        ),
+      });
+      
+      console.log(`Posted announcement for ${data.username} reaching rank ${data.rank}`);
+    } catch (error) {
+      console.error('Error posting top player announcement:', error);
+    }
+  },
+});
+
+// Set up weekly leaderboard post schedule
 Devvit.addTrigger({
   event: 'AppInstall',
   onEvent: async (_, context) => {
-    try {
-      const jobId = await context.scheduler.runJob({
-        cron: '0 0 * * 0',
-        name: 'weekly_leaderboard',
-        data: {},
-      });
-      await context.redis.set(REDIS_KEYS.WEEKLY_JOB, jobId);
-      console.log('Scheduled weekly leaderboard post with job ID:', jobId);
-    } catch (e) {
-      console.error('Error scheduling weekly leaderboard:', e);
-    }
-  }
+    const jobId = await context.scheduler.runJob({
+      cron: '0 0 * * 0', // Every Sunday at midnight
+      name: 'weekly_leaderboard_update',
+      data: {},
+    });
+    await context.redis.set('weeklyLeaderboardJobId', jobId);
+  },
 });
+
+// Helper function to announce top players
+export async function announceTopPlayer(
+  context: Context,
+  username: string, 
+  score: number, 
+  rank: number, 
+  previousPlayer?: { username: string; score: number }
+) {
+  // Create a data object that doesn't include previousPlayer if it's undefined
+  const jobData: {
+    username: string;
+    score: number;
+    rank: number;
+    previousPlayer?: { username: string; score: number };
+  } = {
+    username,
+    score,
+    rank
+  };
+  
+  // Only add previousPlayer if it exists
+  if (previousPlayer) {
+    jobData.previousPlayer = previousPlayer;
+  }
+  
+  await context.scheduler.runJob({
+    name: 'announce_top_player',
+    data: jobData,
+    runAt: new Date()
+  });
+}
+
 
 export default Devvit;
