@@ -1,19 +1,22 @@
 import { Devvit, useWebView, Context } from '@devvit/public-api';
-import type { WebViewMessage, DevvitMessage, LeaderboardEntry } from './message.ts';
+import type { WebViewMessage, DevvitMessage, LeaderboardEntry, CustomItemData } from './message.ts';
 import { LoadingAnimation } from './components/LoadingAnimation.js';
 
 // Constants for Redis keys
 const REDIS_KEYS = {
   LEADERBOARD: 'dontdrop:leaderboard:v1',
   WEEKLY_JOB: 'dontdrop:weekly_job_id:v1',
-  USER_PREFIX: 'dontdrop:user:v1:'
+  USER_PREFIX: 'dontdrop:user:v1:',
+  CUSTOM_WEAPONS: 'dontdrop:custom_weapons:v1',
+  CUSTOM_BALLS: 'dontdrop:custom_balls:v1'
 } as const;
 
 // Update configuration with required permissions
 Devvit.configure({
   redditAPI: true,
   redis: true,
-  realtime: true
+  realtime: true,
+  media: true // Add media permission for image uploads
 });
 
 const TOP_PLAYERS_COUNT = 10;
@@ -197,7 +200,7 @@ const DontDropGame = ({ context }: { context: Devvit.Context }) => {
                 const entry = entries[i];
                 const userKey = `${REDIS_KEYS.USER_PREFIX}${entry.member}`;
                 const userData = await context.redis.hgetall(userKey);
-                
+
                 leaderboard.push({
                   username: entry.member,
                   score: entry.score,
@@ -217,6 +220,240 @@ const DontDropGame = ({ context }: { context: Devvit.Context }) => {
                 }
               }
             });
+            break;
+          }
+
+          case 'fetchCustomWeapons':
+          case 'requestCustomItems': {
+            try {
+              // Get current user
+              const currentUser = await context.reddit.getCurrentUser();
+              const username = currentUser?.username;
+
+              if (!username) {
+                throw new Error('User not authenticated');
+              }
+
+              // Get custom weapons for the user
+              const customWeaponsKey = `${REDIS_KEYS.CUSTOM_WEAPONS}:${username}`;
+              const customWeaponsData = await context.redis.hgetall(customWeaponsKey);
+
+              // Get custom balls for the user
+              const customBallsKey = `${REDIS_KEYS.CUSTOM_BALLS}:${username}`;
+              const customBallsData = await context.redis.hgetall(customBallsKey);
+
+              // Parse the weapons data
+              const weapons: CustomItemData[] = [];
+              if (customWeaponsData && customWeaponsData.weapons) {
+                try {
+                  const parsedWeapons = JSON.parse(customWeaponsData.weapons);
+                  if (Array.isArray(parsedWeapons)) {
+                    weapons.push(...parsedWeapons);
+                  }
+                } catch (e) {
+                  console.error('Error parsing custom weapons:', e);
+                }
+              }
+
+              // Parse the balls data
+              const balls: CustomItemData[] = [];
+              if (customBallsData && customBallsData.balls) {
+                try {
+                  const parsedBalls = JSON.parse(customBallsData.balls);
+                  if (Array.isArray(parsedBalls)) {
+                    balls.push(...parsedBalls);
+                  }
+                } catch (e) {
+                  console.error('Error parsing custom balls:', e);
+                }
+              }
+
+              // Send the custom items data to the client
+              hook.postMessage({
+                type: 'devvit-message',
+                data: {
+                  message: {
+                    type: 'customWeaponsData',
+                    data: {
+                      weapon: weapons,
+                      ball: balls
+                    }
+                  }
+                }
+              });
+            } catch (error) {
+              console.error('Error fetching custom items:', error);
+              hook.postMessage({
+                type: 'devvit-message',
+                data: {
+                  message: {
+                    type: 'error',
+                    data: {
+                      message: 'Failed to fetch custom items',
+                      details: error instanceof Error ? error.message : String(error)
+                    }
+                  }
+                }
+              });
+            }
+            break;
+          }
+
+          case 'requestImageUpload': {
+            try {
+              const { itemType } = message.data;
+          
+              if (itemType !== 'weapon' && itemType !== 'ball') {
+                throw new Error('Unsupported item type');
+              }
+          
+              // Get current user
+              const currentUser = await context.reddit.getCurrentUser();
+              const username = currentUser?.username;
+          
+              if (!username) {
+                throw new Error('User not authenticated');
+              }
+          
+              // Instead of generating an upload URL, we need to inform the client
+              // that they should provide a URL to an existing image
+              hook.postMessage({
+                type: 'devvit-message',
+                data: {
+                  message: {
+                    type: 'requestImageUrl',
+                    data: {
+                      itemType
+                    }
+                  }
+                }
+              });
+            } catch (error) {
+              console.error('Error requesting image upload:', error);
+              hook.postMessage({
+                type: 'devvit-message',
+                data: {
+                  message: {
+                    type: 'error',
+                    data: {
+                      message: 'Failed to request image upload',
+                      details: error instanceof Error ? error.message : String(error)
+                    }
+                  }
+                }
+              });
+            }
+            break;
+          }
+          
+          case 'uploadImage': {
+            try {
+              const { imageUrl, itemType, itemName } = message.data;
+
+              if (!imageUrl || !itemType || !itemName) {
+                throw new Error('Missing required data for image upload');
+              }
+
+              // Get current user
+              const currentUser = await context.reddit.getCurrentUser();
+              const username = currentUser?.username;
+
+              if (!username) {
+                throw new Error('User not authenticated');
+              }
+
+              // Upload the image to Reddit's media service
+              const response = await context.media.upload({
+                url: imageUrl,
+                type: 'image'
+              });
+
+              // Create the new item with the Reddit media URL
+              const newItem: CustomItemData = {
+                imageUrl: response.mediaUrl, // Use the URL returned by Reddit
+                name: itemName,
+                createdAt: new Date().toISOString()
+              };
+
+              if (itemType === 'weapon') {
+                // Store the custom weapon in Redis
+                const customWeaponsKey = `${REDIS_KEYS.CUSTOM_WEAPONS}:${username}`;
+                const customWeaponsData = await context.redis.hgetall(customWeaponsKey);
+
+                let weapons: CustomItemData[] = [];
+
+                if (customWeaponsData && customWeaponsData.weapons) {
+                  try {
+                    const parsedWeapons = JSON.parse(customWeaponsData.weapons);
+                    if (Array.isArray(parsedWeapons)) {
+                      weapons = parsedWeapons;
+                    }
+                  } catch (e) {
+                    console.error('Error parsing custom weapons:', e);
+                  }
+                }
+
+                weapons.push(newItem);
+
+                // Save back to Redis
+                await context.redis.hset(customWeaponsKey, {
+                  weapons: JSON.stringify(weapons)
+                });
+              } else if (itemType === 'ball') {
+                // Store the custom ball in Redis
+                const customBallsKey = `${REDIS_KEYS.CUSTOM_BALLS}:${username}`;
+                const customBallsData = await context.redis.hgetall(customBallsKey);
+
+                let balls: CustomItemData[] = [];
+
+                if (customBallsData && customBallsData.balls) {
+                  try {
+                    const parsedBalls = JSON.parse(customBallsData.balls);
+                    if (Array.isArray(parsedBalls)) {
+                      balls = parsedBalls;
+                    }
+                  } catch (e) {
+                    console.error('Error parsing custom balls:', e);
+                  }
+                }
+
+                balls.push(newItem);
+
+                // Save back to Redis
+                await context.redis.hset(customBallsKey, {
+                  balls: JSON.stringify(balls)
+                });
+              }
+
+              // Notify the client that the upload is complete
+              hook.postMessage({
+                type: 'devvit-message',
+                data: {
+                  message: {
+                    type: 'uploadComplete',
+                    data: {
+                      imageUrl: response.mediaUrl,
+                      itemType,
+                      itemName
+                    }
+                  }
+                }
+              });
+            } catch (error) {
+              console.error('Error uploading image:', error);
+              hook.postMessage({
+                type: 'devvit-message',
+                data: {
+                  message: {
+                    type: 'error',
+                    data: {
+                      message: 'Failed to upload image',
+                      details: error instanceof Error ? error.message : String(error)
+                    }
+                  }
+                }
+              });
+            }
             break;
           }
         }
@@ -301,7 +538,7 @@ Devvit.addSchedulerJob({
         subredditName: subreddit.name,
         preview: (
           <blocks height="tall">
-            <webview url={`https://raw.githubusercontent.com/YourUsername/dontdrop/main/webroot/leaderboard.html?data=${leaderboardData}`} />
+            <webview url={`https://raw.githubusercontent.com/AMACAFELLA/dontdrop/main/webroot/leaderboard.html?data=${leaderboardData}`} />
           </blocks>
         ),
       });
@@ -336,7 +573,7 @@ Devvit.addSchedulerJob({
         subredditName: subreddit.name,
         preview: (
           <blocks height="regular">
-            <webview url={`https://raw.githubusercontent.com/YourUsername/dontdrop/main/webroot/top-player.html?data=${playerData}`} />
+            <webview url={`https://raw.githubusercontent.com//dontdrop/main/webroot/top-player.html?data=${playerData}`} />
           </blocks>
         ),
       });

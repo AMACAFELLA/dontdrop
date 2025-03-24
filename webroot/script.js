@@ -8,95 +8,97 @@ let highScore = parseInt(localStorage.getItem('highScore') || '0', 10);
 let currentScore = 0;
 let gameStarted = false;
 let retryAttempts = 0;
+let customWeapons = []; // Store custom weapons from the server
+let customBalls = []; // Store custom balls from the server
 const MAX_RETRY_ATTEMPTS = 3;
 const RETRY_DELAY = 1000; // 1 second
 
 // Weapon system
 const weapons = {
-  paddles: {
-    default: {
-      name: 'Default Paddle',
-      image: 'assets/paddle.png',
-      bounceHeight: 1.0,
-      speedMultiplier: 1.0,
-      unlockScore: 0,
-      specialPower: null
+    paddles: {
+        default: {
+            name: 'Default Paddle',
+            image: 'assets/paddle.png',
+            bounceHeight: 1.0,
+            speedMultiplier: 1.0,
+            unlockScore: 0,
+            specialPower: null
+        },
+        blue: {
+            name: 'Blue Paddle',
+            image: 'assets/paddles/blue-paddle.png',
+            bounceHeight: 1.2,
+            speedMultiplier: 1.1,
+            unlockScore: 100,
+            specialPower: "extraBounce" // Extra bounce height
+        },
+        orange: {
+            name: 'Orange Paddle',
+            image: 'assets/paddles/orange-paddle.png',
+            bounceHeight: 0.8,
+            speedMultiplier: 1.3,
+            unlockScore: 200,
+            specialPower: "speedBoost" // Extra horizontal speed
+        },
+        black: {
+            name: 'Black Paddle',
+            image: 'assets/paddles/black-paddle.png',
+            bounceHeight: 1.5,
+            speedMultiplier: 0.8,
+            unlockScore: 300,
+            specialPower: "doublePoints" // Double points on hit
+        },
+        darkblue: {
+            name: 'Dark Blue Paddle',
+            image: 'assets/paddles/darkblue-paddle.png',
+            bounceHeight: 1.3,
+            speedMultiplier: 1.2,
+            unlockScore: 400,
+            specialPower: "comboExtender" // Extends combo duration
+        }
     },
-    blue: {
-      name: 'Blue Paddle',
-      image: 'assets/paddles/blue-paddle.png',
-      bounceHeight: 1.2,
-      speedMultiplier: 1.1,
-      unlockScore: 100,
-      specialPower: "extraBounce" // Extra bounce height
-    },
-    orange: {
-      name: 'Orange Paddle',
-      image: 'assets/paddles/orange-paddle.png',
-      bounceHeight: 0.8,
-      speedMultiplier: 1.3,
-      unlockScore: 200,
-      specialPower: "speedBoost" // Extra horizontal speed
-    },
-    black: {
-      name: 'Black Paddle',
-      image: 'assets/paddles/black-paddle.png',
-      bounceHeight: 1.5,
-      speedMultiplier: 0.8,
-      unlockScore: 300,
-      specialPower: "doublePoints" // Double points on hit
-    },
-    darkblue: {
-      name: 'Dark Blue Paddle',
-      image: 'assets/paddles/darkblue-paddle.png',
-      bounceHeight: 1.3,
-      speedMultiplier: 1.2,
-      unlockScore: 400,
-      specialPower: "comboExtender" // Extends combo duration
+    balls: {
+        default: {
+            name: 'Default Ball',
+            image: 'assets/ball.png',
+            speedMultiplier: 1.0,
+            bounceMultiplier: 1.0,
+            unlockScore: 0,
+            gravity: 0.2 // Regular gravity
+        },
+        blue: {
+            name: 'Blue Ball',
+            image: 'assets/balls/blue-paddle-ball.png',
+            speedMultiplier: 1.2,
+            bounceMultiplier: 1.1,
+            unlockScore: 100,
+            gravity: 0.18 // Lower gravity
+        },
+        orange: {
+            name: 'Orange Ball',
+            image: 'assets/balls/orange-paddle-ball.png',
+            speedMultiplier: 1.4,
+            bounceMultiplier: 0.9,
+            unlockScore: 200,
+            gravity: 0.22 // Higher gravity
+        },
+        black: {
+            name: 'Grenade Ball',
+            image: 'assets/balls/black-paddle-granade.png',
+            speedMultiplier: 1.5,
+            bounceMultiplier: 1.3,
+            unlockScore: 300,
+            gravity: 0.25 // High gravity
+        },
+        darkblue: {
+            name: 'Dynamite Ball',
+            image: 'assets/balls/darkblue-paddle-dynamite.png',
+            speedMultiplier: 1.6,
+            bounceMultiplier: 1.4,
+            unlockScore: 400,
+            gravity: 0.15 // Low gravity
+        }
     }
-  },
-  balls: {
-    default: {
-      name: 'Default Ball',
-      image: 'assets/ball.png',
-      speedMultiplier: 1.0,
-      bounceMultiplier: 1.0,
-      unlockScore: 0,
-      gravity: 0.2 // Regular gravity
-    },
-    blue: {
-      name: 'Blue Ball',
-      image: 'assets/balls/blue-paddle-ball.png',
-      speedMultiplier: 1.2,
-      bounceMultiplier: 1.1,
-      unlockScore: 100,
-      gravity: 0.18 // Lower gravity
-    },
-    orange: {
-      name: 'Orange Ball',
-      image: 'assets/balls/orange-paddle-ball.png',
-      speedMultiplier: 1.4,
-      bounceMultiplier: 0.9,
-      unlockScore: 200,
-      gravity: 0.22 // Higher gravity
-    },
-    black: {
-      name: 'Grenade Ball',
-      image: 'assets/balls/black-paddle-granade.png',
-      speedMultiplier: 1.5,
-      bounceMultiplier: 1.3,
-      unlockScore: 300,
-      gravity: 0.25 // High gravity
-    },
-    darkblue: {
-      name: 'Dynamite Ball',
-      image: 'assets/balls/darkblue-paddle-dynamite.png',
-      speedMultiplier: 1.6,
-      bounceMultiplier: 1.4,
-      unlockScore: 400,
-      gravity: 0.15 // Low gravity
-    }
-  }
 };
 
 // Selected weapons
@@ -109,46 +111,46 @@ let confirmedUsername = false; // Flag to indicate we have confirmed the usernam
 
 // Enhanced error handling state
 const ErrorState = {
-  NONE: 'none',
-  CONNECTION_ERROR: 'connection_error',
-  GENERIC_ERROR: 'generic_error'
+    NONE: 'none',
+    CONNECTION_ERROR: 'connection_error',
+    GENERIC_ERROR: 'generic_error'
 };
 
 let currentErrorState = ErrorState.NONE;
 let errorRetryTimeout = null;
 
 function showError(message, type = ErrorState.GENERIC_ERROR) {
-  const errorOverlay = document.createElement('div');
-  errorOverlay.className = 'error-overlay';
-  errorOverlay.innerHTML = `
+    const errorOverlay = document.createElement('div');
+    errorOverlay.className = 'error-overlay';
+    errorOverlay.innerHTML = `
     <div class="error-content">
       <div class="error-icon ${type}"></div>
       <p>${message}</p>
       <button class="retry-button">Retry</button>
     </div>
   `;
-  
-  document.body.appendChild(errorOverlay);
-  currentErrorState = type;
-  
-  const retryButton = errorOverlay.querySelector('.retry-button');
-  retryButton.addEventListener('click', () => {
-    errorOverlay.remove();
-    retryConnection();
-  });
+
+    document.body.appendChild(errorOverlay);
+    currentErrorState = type;
+
+    const retryButton = errorOverlay.querySelector('.retry-button');
+    retryButton.addEventListener('click', () => {
+        errorOverlay.remove();
+        retryConnection();
+    });
 }
 
 async function retryConnection() {
-  if (errorRetryTimeout) {
-    clearTimeout(errorRetryTimeout);
-  }
-  
-  try {
-    await postWebViewMessage({ type: 'webViewReady' });
-    currentErrorState = ErrorState.NONE;
-  } catch (error) {
-    errorRetryTimeout = setTimeout(retryConnection, 5000);
-  }
+    if (errorRetryTimeout) {
+        clearTimeout(errorRetryTimeout);
+    }
+
+    try {
+        await postWebViewMessage({ type: 'webViewReady' });
+        currentErrorState = ErrorState.NONE;
+    } catch (error) {
+        errorRetryTimeout = setTimeout(retryConnection, 5000);
+    }
 }
 
 // Game elements
@@ -180,53 +182,53 @@ let currentScreen = 'menu';
 
 // Function to ensure leaderboard is displayed with existing data
 function ensureLeaderboardDisplayed() {
-  console.log("Ensuring leaderboard is displayed with existing data");
-  
-  // If we already have leaderboard data stored, display it immediately
-  if (Array.isArray(leaderboard) && leaderboard.length > 0) {
-    console.log("Using existing leaderboard data for immediate display:", leaderboard);
-    renderLeaderboard(leaderboard);
+    console.log("Ensuring leaderboard is displayed with existing data");
+
+    // If we already have leaderboard data stored, display it immediately
+    if (Array.isArray(leaderboard) && leaderboard.length > 0) {
+        console.log("Using existing leaderboard data for immediate display:", leaderboard);
+        renderLeaderboard(leaderboard);
     } else {
-    console.log("No existing leaderboard data, using guaranteed fallback data");
-    // Create guaranteed fallback data with the known user entry
-    const fallbackData = [{
-      username: "Due_Analyst_5617",
-      score: 2159,
-      rank: 1,
-      createdAt: "2025-03-18T17:10:38.858Z",
-      updatedAt: "2025-03-19T07:00:07.239Z"
-    }];
-    
-    // Update the global leaderboard variable
-    leaderboard = fallbackData;
-    
-    // Render with the fallback data
-    renderLeaderboard(fallbackData);
-    
-    // Still try to get fresh data from the server
-    refreshLeaderboard();
-  }
+        console.log("No existing leaderboard data, using guaranteed fallback data");
+        // Create guaranteed fallback data with the known user entry
+        const fallbackData = [{
+            username: "Due_Analyst_5617",
+            score: 2159,
+            rank: 1,
+            createdAt: "2025-03-18T17:10:38.858Z",
+            updatedAt: "2025-03-19T07:00:07.239Z"
+        }];
+
+        // Update the global leaderboard variable
+        leaderboard = fallbackData;
+
+        // Render with the fallback data
+        renderLeaderboard(fallbackData);
+
+        // Still try to get fresh data from the server
+        refreshLeaderboard();
+    }
 }
 
 function showScreen(screenId) {
     // Clean up any existing game state first
     resetGameState();
-    
+
     // Hide all screens first
     document.querySelectorAll('.screen').forEach(screen => {
         screen.classList.remove('active');
     });
-    
+
     // Show the requested screen
     const targetScreen = document.getElementById(screenId);
     if (targetScreen) {
         targetScreen.classList.add('active');
-        
+
         // Initialize game if showing game screen
         if (screenId === 'game-screen') {
             initGame();
         }
-        
+
         // Handle leaderboard screen specifically
         if (screenId === 'leaderboard-screen') {
             console.log("Showing leaderboard screen, ensuring data is displayed");
@@ -249,7 +251,7 @@ function showScreen(screenId) {
 // Initialize floating background elements
 function initFloatingElements() {
     const menuBg = document.querySelector('.menu-background');
-    
+
     // Create multiple floating balls and paddles
     for (let i = 0; i < 5; i++) {
         const ball = document.createElement('div');
@@ -257,13 +259,13 @@ function initFloatingElements() {
         ball.style.left = `${Math.random() * 100}%`;
         ball.style.top = `${Math.random() * 100}%`;
         ball.style.animationDelay = `${Math.random() * 2}s`;
-        
+
         const paddle = document.createElement('div');
         paddle.className = 'floating-paddle';
         paddle.style.left = `${Math.random() * 100}%`;
         paddle.style.top = `${Math.random() * 100}%`;
         paddle.style.animationDelay = `${Math.random() * 2}s`;
-        
+
         menuBg.appendChild(ball);
         menuBg.appendChild(paddle);
     }
@@ -272,17 +274,94 @@ function initFloatingElements() {
 // Add global variable for leaderboard
 let leaderboard = [];
 
+// Set up message event listener to handle messages from Devvit
+window.addEventListener('message', (event) => {
+    if (!event.data || event.data.type !== 'devvit-message') return;
+
+    const { message } = event.data.data;
+
+    switch (message.type) {
+        case 'initialData':
+            // Handle initial data from server
+            username = message.data.username || 'Guest';
+            if (message.data.leaderboard) {
+                leaderboard = message.data.leaderboard;
+                renderLeaderboard({ tab: 'all-time', entries: leaderboard });
+            }
+
+            // Request custom weapons if we have a username
+            if (username !== 'Guest') {
+                requestCustomWeapons();
+            }
+            break;
+
+        case 'leaderboardData':
+            // Handle leaderboard data
+            leaderboardRequestInProgress = false;
+            if (message.data && message.data.leaderboard) {
+                leaderboard = message.data.leaderboard;
+                renderLeaderboard({ tab: 'all-time', entries: leaderboard });
+            }
+            break;
+
+        case 'gameOverAck':
+            // Handle game over acknowledgment
+            if (message.data && message.data.leaderboard) {
+                leaderboard = message.data.leaderboard;
+                renderLeaderboard({ tab: 'all-time', entries: leaderboard });
+            }
+            break;
+
+        case 'customItemsData':
+            // Handle custom items data
+            if (message.data && message.data.weapon) {
+                handleCustomWeaponsData(message.data);
+            }
+            break;
+
+        case 'uploadUrlGenerated':
+            // Handle upload URL generation
+            if (message.data) {
+                handleUploadUrlGenerated(message.data);
+            }
+            break;
+
+        case 'mediaUploaded':
+            // Handle media upload completion
+            if (message.data) {
+                showAward('gold', 'Custom item uploaded successfully!');
+                requestCustomWeapons(); // Refresh custom weapons
+            }
+            break;
+
+        case 'uploadComplete':
+            // Handle upload completion
+            if (message.data) {
+                showAward('gold', `Custom ${message.data.itemType} uploaded successfully!`);
+                requestCustomWeapons(); // Refresh custom weapons
+            }
+            break;
+
+        case 'error':
+            // Handle error messages
+            if (message.data && message.data.message) {
+                showError(message.data.message);
+            }
+            break;
+    }
+});
+
 // Initialize Menu and Event Listeners
 function initMenu() {
     initFloatingElements();
-    
+
     // Menu buttons
     document.getElementById('start-btn').addEventListener('click', () => {
         showScreen('game-screen');
     });
-    
+
     document.getElementById('how-to-play-btn').addEventListener('click', showHowToPlayModal);
-    
+
     // Add weapons selection button
     const weaponsBtn = document.getElementById('weapons-btn');
     if (weaponsBtn) {
@@ -290,7 +369,7 @@ function initMenu() {
             showWeaponSelection();
         });
     }
-    
+
     // Leaderboard button
     document.getElementById('leaderboard-btn').addEventListener('click', () => {
         console.log("Leaderboard button clicked, showing leaderboard screen");
@@ -309,33 +388,33 @@ function initMenu() {
 
 // Update handleMouseMove to properly track mouse movement
 function handleMouseMove(e) {
-  if (!gameArea || !paddleCursor) return;
-    
+    if (!gameArea || !paddleCursor) return;
+
     const rect = gameArea.getBoundingClientRect();
     cursorX = e.clientX - rect.left;
     cursorY = Math.max(30, Math.min(e.clientY - rect.top, gameArea.offsetHeight - 30));
-    
-  // Calculate paddle velocity for physics
+
+    // Calculate paddle velocity for physics
     paddleVelocityY = cursorY - lastCursorY;
     lastCursorY = cursorY;
-    
+
     // Update paddle cursor position
     updatePaddlePosition(cursorX, cursorY);
 }
 
 function handleTouchMove(e) {
-  if (!gameArea || !paddleCursor) return;
-  
-  e.preventDefault(); // Prevent scrolling
-  
+    if (!gameArea || !paddleCursor) return;
+
+    e.preventDefault(); // Prevent scrolling
+
     const rect = gameArea.getBoundingClientRect();
     cursorX = e.touches[0].clientX - rect.left;
     cursorY = Math.max(30, Math.min(e.touches[0].clientY - rect.top, gameArea.offsetHeight - 30));
-    
+
     // Calculate paddle velocity
     paddleVelocityY = cursorY - lastCursorY;
     lastCursorY = cursorY;
-    
+
     // Update paddle cursor position
     updatePaddlePosition(cursorX, cursorY);
 }
@@ -345,15 +424,15 @@ const PADDLE_WIDTH = 120; // Reduced from 200
 const PADDLE_HEIGHT = 25; // Increased from 10 to match the image height
 
 function updatePaddlePosition(x, y) {
-  if (!paddleCursor || !gameArea) return;
-  
+    if (!paddleCursor || !gameArea) return;
+
     const maxX = gameArea.offsetWidth - PADDLE_WIDTH;
     const paddleX = Math.max(0, Math.min(x - PADDLE_WIDTH / 2, maxX));
-    
+
     paddleCursor.style.left = paddleX + 'px';
-    paddleCursor.style.top = (y - PADDLE_HEIGHT/2) + 'px';
-    
-  if (!gameStarted && ball) {
+    paddleCursor.style.top = (y - PADDLE_HEIGHT / 2) + 'px';
+
+    if (!gameStarted && ball) {
         // Keep ball on paddle before game starts
         ballX = paddleX + (PADDLE_WIDTH - BALL_SIZE) / 2;
         ballY = y - BALL_SIZE - 5; // Slightly above paddle
@@ -367,25 +446,25 @@ function startGame(e) {
         e.preventDefault();
         e.stopPropagation();
         gameStarted = true;
-        
+
         // Hide instructions
         if (instructions) {
             instructions.style.display = 'none';
         }
-        
+
         // Make sure we have valid coordinates
-        if (typeof ballX !== 'number' || isNaN(ballX) || 
+        if (typeof ballX !== 'number' || isNaN(ballX) ||
             typeof ballY !== 'number' || isNaN(ballY)) {
             resetBall();
         }
-        
+
         // Launch ball at random angle
         const angle = (Math.random() * 60 + 60) * (Math.PI / 180); // Launch between 60-120 degrees
         ballSpeedX = Math.cos(angle) * baseSpeed;
         ballSpeedY = -Math.sin(angle) * baseSpeed; // Negative to go upward
-        
+
         console.log("Ball launched with velocity:", ballSpeedX, ballSpeedY);
-        
+
         // Make sure ball is visible
         if (ball) {
             ball.style.visibility = 'visible';
@@ -398,33 +477,33 @@ function resetBall() {
         console.error("Cannot reset ball: Game elements not found");
         return;
     }
-    
+
     // Position ball relative to paddle cursor
     cursorX = gameArea.offsetWidth / 2;
     cursorY = gameArea.offsetHeight - 100;
     lastCursorY = cursorY;
-    
+
     // Make sure paddle is positioned
     updatePaddlePosition(cursorX, cursorY);
-    
+
     // Get paddle position
     const paddleRect = paddleCursor.getBoundingClientRect();
     const gameRect = gameArea.getBoundingClientRect();
-    
+
     // Calculate ball position relative to paddle
     ballX = cursorX - BALL_SIZE / 2;
     ballY = cursorY - BALL_SIZE - 15; // Position above paddle
-    
+
     // Update ball element position
     ball.style.left = ballX + 'px';
     ball.style.top = ballY + 'px';
     ball.style.visibility = 'visible';
-    
+
     // Reset ball velocity
     ballSpeedX = 0;
     ballSpeedY = 0;
     paddleVelocityY = 0;
-    
+
     console.log("Ball reset to position:", ballX, ballY);
 }
 
@@ -436,14 +515,14 @@ function createHitEffect(x, y) {
     ripple.style.left = x + 'px';
     ripple.style.top = y + 'px';
     gameArea.appendChild(ripple);
-    
+
     // Create single particle burst
     const particleHit = document.createElement('div');
     particleHit.className = 'particle-hit';
     particleHit.style.left = x + 'px';
     particleHit.style.top = y + 'px';
     gameArea.appendChild(particleHit);
-    
+
     // Remove elements after animation
     setTimeout(() => {
         ripple.remove();
@@ -464,16 +543,16 @@ function updateScore() {
     // Only give height bonus points on specific height thresholds
     const heightPercent = ((gameArea.offsetHeight - ballY) / gameArea.offsetHeight) * 100;
     let heightBonus = 0;
-    
+
     // Award bonus points at certain height thresholds
     if (heightPercent >= 90) heightBonus = 2;
     else if (heightPercent >= 75) heightBonus = 1;
-    
+
     // Only add height bonus if we're moving upward to reward intentional high hits
     if (ballSpeedY < 0) {
         currentScore += heightBonus;
     }
-    
+
     // Update display with rounded score
     document.getElementById('score').textContent = Math.floor(currentScore);
 }
@@ -484,7 +563,7 @@ function createScorePopup(x, y, text) {
     popup.textContent = text;
     popup.style.left = x + 'px';
     popup.style.top = y + 'px';
-    
+
     // Add color based on score value
     if (text.includes('5x')) {
         popup.style.color = '#ff5722';
@@ -499,9 +578,9 @@ function createScorePopup(x, y, text) {
         popup.style.color = '#3f51b5';
         popup.style.fontSize = '20px';
     }
-    
+
     gameArea.appendChild(popup);
-    
+
     // Remove after animation
     setTimeout(() => popup.remove(), 1000);
 }
@@ -510,12 +589,12 @@ function updateMultiplier() {
     const currentTime = Date.now();
     const timeSinceLastHit = currentTime - lastHitTime;
     lastHitTime = currentTime;
-    
+
     // Clear any existing combo timeout
     if (comboTimeoutId) {
         clearTimeout(comboTimeoutId);
     }
-    
+
     // Set timeout to reset combo if no hits occur within threshold
     comboTimeoutId = setTimeout(() => {
         if (consecutiveHits > 0) {
@@ -523,9 +602,9 @@ function updateMultiplier() {
             updateComboDisplay();
         }
     }, QUICK_HIT_THRESHOLD);
-    
+
     consecutiveHits++;
-    
+
     // Different multiplier thresholds with corresponding rewards
     if (consecutiveHits === 5) {
         scoreMultiplier = 2;
@@ -543,16 +622,16 @@ function updateMultiplier() {
         scoreMultiplier = 5;
         showComboText("5x LEGENDARY COMBO!");
         playSound('combo-milestone');
-        
+
         // Create an epic visual effect for legendary combo
-        createParticleExplosion(ballX + BALL_SIZE/2, ballY + BALL_SIZE/2, 30);
+        createParticleExplosion(ballX + BALL_SIZE / 2, ballY + BALL_SIZE / 2, 30);
     } else if (consecutiveHits % 5 === 0) {
         // Small bonus points for maintaining a combo
         const bonusPoints = Math.min(5, consecutiveHits / 5) * scoreMultiplier;
         currentScore += bonusPoints;
         createScorePopup(ballX, ballY, `+${bonusPoints} Combo!`);
     }
-    
+
     // Update the combo display
     updateComboDisplay();
 }
@@ -562,10 +641,10 @@ function resetMultiplier() {
         clearTimeout(comboTimeoutId);
         comboTimeoutId = null;
     }
-    
+
     scoreMultiplier = 1;
     consecutiveHits = 0;
-    
+
     // Update the combo display
     updateComboDisplay();
 }
@@ -582,64 +661,64 @@ function checkCollision() {
         ballRect.left <= paddleRect.right &&
         ballRect.right >= paddleRect.left &&
         ballRect.top <= paddleRect.bottom) {
-        
+
         // Log current weapon status on first hit (for debugging purposes)
         if (consecutiveHits === 0) {
-            console.log("First hit with weapons:", 
-                selectedPaddle.name, 
-                selectedBall.name, 
-                "Current background images:", 
-                paddleCursor.style.backgroundImage, 
+            console.log("First hit with weapons:",
+                selectedPaddle.name,
+                selectedBall.name,
+                "Current background images:",
+                paddleCursor.style.backgroundImage,
                 ball.style.backgroundImage);
         }
-        
+
         // Calculate hit position relative to paddle center
         const paddleCenter = paddleRect.left + paddleRect.width / 2;
         const hitPosition = (ballRect.left + ballRect.width / 2 - paddleCenter) / (paddleRect.width / 2);
-        
+
         // Apply weapon-specific mechanics
         const paddleBounceHeight = selectedPaddle.bounceHeight;
         const paddleSpeedMultiplier = selectedPaddle.speedMultiplier;
         const ballSpeedMultiplier = selectedBall.speedMultiplier;
         const ballBounceMultiplier = selectedBall.bounceMultiplier;
-        
+
         // Calculate bounce angle based on hit position and weapon properties
         const bounceAngle = hitPosition * Math.PI / 3 * paddleBounceHeight;
-        
+
         // Calculate new ball speed with weapon multipliers
         const newSpeed = baseSpeed * paddleSpeedMultiplier * ballSpeedMultiplier;
-        
+
         // Apply new velocity with weapon properties
         ballSpeedX = Math.sin(bounceAngle) * newSpeed;
         ballSpeedY = -Math.cos(bounceAngle) * newSpeed * ballBounceMultiplier;
-        
+
         // Apply special paddle powers
         applyPaddlePower();
-        
+
         // Ensure ball doesn't get stuck
         if (Math.abs(ballSpeedX) < 1) {
             ballSpeedX = Math.sign(ballSpeedX) * 1;
         }
-        
+
         // Create hit effect
         createHitEffect(ballRect.left + ballRect.width / 2, ballRect.top);
-        
+
         // Update score with multipliers
         const pointsGained = Math.ceil(1 * scoreMultiplier);
         currentScore += pointsGained;
-        
+
         // Create score popup showing points gained
-        createScorePopup(ballRect.left + ballRect.width/2, ballRect.top - 20, `+${pointsGained}`);
-        
+        createScorePopup(ballRect.left + ballRect.width / 2, ballRect.top - 20, `+${pointsGained}`);
+
         // Update multiplier (combo system)
         updateMultiplier();
-        
+
         // Play hit sound
         playSound('hit');
-        
+
         // Add screen shake
         addScreenShake();
-        
+
         // Create ball trail effect
         createBallTrail();
     }
@@ -648,8 +727,8 @@ function checkCollision() {
 // Apply special powers for the selected paddle
 function applyPaddlePower() {
     if (!selectedPaddle.specialPower) return;
-    
-    switch(selectedPaddle.specialPower) {
+
+    switch (selectedPaddle.specialPower) {
         case "extraBounce":
             // Blue paddle: Extra bounce height on random hits
             if (Math.random() < 0.3) {
@@ -657,7 +736,7 @@ function applyPaddlePower() {
                 createPowerEffect("SUPER BOUNCE!", "#4285f4");
             }
             break;
-            
+
         case "speedBoost":
             // Orange paddle: Horizontal speed boost
             if (Math.random() < 0.3) {
@@ -665,7 +744,7 @@ function applyPaddlePower() {
                 createPowerEffect("SPEED BOOST!", "#ff9800");
             }
             break;
-            
+
         case "doublePoints":
             // Black paddle: Chance for double points
             if (Math.random() < 0.25) {
@@ -673,7 +752,7 @@ function applyPaddlePower() {
                 createPowerEffect("DOUBLE POINTS!", "#000000");
             }
             break;
-            
+
         case "comboExtender":
             // Dark blue paddle: Extends combo duration
             if (Math.random() < 0.3) {
@@ -687,7 +766,7 @@ function applyPaddlePower() {
                         updateComboDisplay();
                     }
                 }, QUICK_HIT_THRESHOLD * 1.5);
-                
+
                 createPowerEffect("COMBO EXTENDED!", "#0d47a1");
             }
             break;
@@ -703,7 +782,7 @@ function createPowerEffect(text, color) {
     powerEffect.style.left = `${ballX}px`;
     powerEffect.style.top = `${ballY - 40}px`;
     gameArea.appendChild(powerEffect);
-    
+
     // Remove after animation
     setTimeout(() => powerEffect.remove(), 1000);
 }
@@ -716,17 +795,17 @@ function createBallTrail() {
     const now = performance.now();
     if (now - lastTrailTime < 50) return; // Only create trail every 50ms
     lastTrailTime = now;
-    
+
     const trail = document.createElement('div');
     trail.className = 'ball-trail';
-    trail.style.left = ballX + BALL_SIZE/2 + 'px';
-    trail.style.top = ballY + BALL_SIZE/2 + 'px';
-    
+    trail.style.left = ballX + BALL_SIZE / 2 + 'px';
+    trail.style.top = ballY + BALL_SIZE / 2 + 'px';
+
     // Use the same background image as the ball
     trail.style.backgroundImage = `url('${selectedBall.image}')`;
-    
+
     gameArea.appendChild(trail);
-    
+
     // Remove the trail after animation
     setTimeout(() => {
         if (trail && trail.parentNode) {
@@ -737,60 +816,60 @@ function createBallTrail() {
 
 function gameLoop() {
     if (!gameArea || !ball) return;
-    
+
     if (gameStarted) {
         // Apply the ball's specific gravity
         const ballGravity = selectedBall.gravity || gravity;
-        
+
         // Create ball trail effect when moving
         if (Math.abs(ballSpeedX) > 2 || Math.abs(ballSpeedY) > 2) {
             createBallTrail();
         }
-        
+
         // Update ball position with custom gravity
         ballSpeedY += ballGravity;
         ballX += ballSpeedX;
         ballY += ballSpeedY;
-        
+
         // Add wall collision detection
         // Left and right walls
         if (ballX <= 0) {
             ballX = 0;
             ballSpeedX = -ballSpeedX;
-            createHitEffect(0, ballY + BALL_SIZE/2);
+            createHitEffect(0, ballY + BALL_SIZE / 2);
             playSound('hit');
         } else if (ballX + BALL_SIZE >= gameArea.offsetWidth) {
             ballX = gameArea.offsetWidth - BALL_SIZE;
             ballSpeedX = -ballSpeedX;
-            createHitEffect(gameArea.offsetWidth, ballY + BALL_SIZE/2);
+            createHitEffect(gameArea.offsetWidth, ballY + BALL_SIZE / 2);
             playSound('hit');
         }
-        
+
         // Top wall
         if (ballY <= 0) {
             ballY = 0;
             ballSpeedY = -ballSpeedY;
-            createHitEffect(ballX + BALL_SIZE/2, 0);
+            createHitEffect(ballX + BALL_SIZE / 2, 0);
             playSound('hit');
         }
-        
+
         // Check for collision with paddle
         checkCollision();
-        
+
         // Update score display
         updateScore();
-        
+
         // Update ball position on screen
         ball.style.left = ballX + 'px';
         ball.style.top = ballY + 'px';
-        
+
         // Check for game over (ball hits bottom)
         if (ballY + ball.offsetHeight > gameArea.offsetHeight) {
             gameOver();
             return; // Exit game loop on game over
         }
     }
-    
+
     // Continue game loop
     animationFrameId = requestAnimationFrame(gameLoop);
 }
@@ -799,26 +878,26 @@ function gameLoop() {
 function gameOver() {
     gameStarted = false;
     playSound('game-over');
-    
+
     // Stop game loop
     if (animationFrameId) {
         cancelAnimationFrame(animationFrameId);
         animationFrameId = null;
     }
-    
+
     // Hide paddle cursor and ball
     if (paddleCursor) {
         paddleCursor.style.display = 'none';
     }
     ball.style.visibility = 'hidden';
-    
+
     // Create game over overlay
     const gameOverContainer = document.getElementById('game-over-container');
     const overlay = document.createElement('div');
     overlay.className = 'game-over-overlay';
-    
+
     let scoreMessage = '<div class="score-saved">Score saved to leaderboard</div>';
-    
+
     overlay.innerHTML = `
         <div class="game-over-content">
             <h2>Game Over!</h2>
@@ -833,26 +912,26 @@ function gameOver() {
         </div>
     `;
     gameOverContainer.appendChild(overlay);
-    
+
     // Add event listeners with improved menu navigation
     const playAgainButton = overlay.querySelector('#play-again-button');
     const viewLeaderboardButton = overlay.querySelector('#view-leaderboard-button');
     const backToMenuButton = overlay.querySelector('#back-to-menu-button');
-    
+
     if (playAgainButton) {
         playAgainButton.addEventListener('click', () => {
             resetGame();
             showScreen('game-screen');
         });
     }
-    
+
     if (viewLeaderboardButton) {
         viewLeaderboardButton.addEventListener('click', () => {
             gameOverContainer.innerHTML = '';
             showScreen('leaderboard-screen');
         });
     }
-    
+
     if (backToMenuButton) {
         backToMenuButton.addEventListener('click', () => {
             gameOverContainer.innerHTML = '';
@@ -860,16 +939,16 @@ function gameOver() {
             resetGameState(); // Make sure game state is properly cleaned up
         });
     }
-    
+
     // Animate overlay
     requestAnimationFrame(() => {
         overlay.classList.add('active');
     });
-    
+
     // Add game over effects
     gameArea.classList.add('game-over');
     addScreenShake();
-    
+
     // Create explosion effect
     const ballRect = ball.getBoundingClientRect();
     const gameRect = gameArea.getBoundingClientRect();
@@ -877,34 +956,34 @@ function gameOver() {
         ballRect.left - gameRect.left + ball.offsetWidth / 2,
         ballRect.top - gameRect.top + ball.offsetHeight / 2
     );
-    
+
     // Flash the score
     const scoreValue = document.getElementById('score');
     scoreValue.classList.add('flash');
     setTimeout(() => scoreValue.classList.remove('flash'), 300);
-    
+
     const finalScore = currentScore;
-    
+
     // Update local high score
     if (finalScore > highScore) {
         highScore = finalScore;
         document.getElementById('highScore').textContent = highScore;
         localStorage.setItem('highScore', highScore.toString());
-        
+
         // Flash high score
         const highScoreValue = document.getElementById('highScore');
         highScoreValue.classList.add('flash');
         setTimeout(() => highScoreValue.classList.remove('flash'), 300);
     }
-    
+
     // Check if we need to update our local leaderboard
     let localLeaderboardUpdated = false;
-    
+
     // Update local leaderboard immediately for better user experience
     if (Array.isArray(leaderboard) && leaderboard.length > 0) {
         // Find if the current user already has an entry
         const existingEntryIndex = leaderboard.findIndex(entry => entry.username === currentUsername);
-        
+
         if (existingEntryIndex >= 0) {
             // Update only if new score is higher
             if (finalScore > leaderboard[existingEntryIndex].score) {
@@ -912,7 +991,7 @@ function gameOver() {
                 leaderboard[existingEntryIndex].updatedAt = new Date().toISOString();
                 localLeaderboardUpdated = true;
             }
-    } else {
+        } else {
             // Add a new entry for this user
             leaderboard.push({
                 username: currentUsername,
@@ -923,11 +1002,11 @@ function gameOver() {
             });
             localLeaderboardUpdated = true;
         }
-        
+
         // Sort by score if we updated
         if (localLeaderboardUpdated) {
             leaderboard.sort((a, b) => b.score - a.score);
-            
+
             // Update ranks
             leaderboard = leaderboard.map((entry, index) => ({
                 ...entry,
@@ -935,18 +1014,18 @@ function gameOver() {
             }));
         }
     }
-    
+
     // Send final score to Devvit for leaderboard update
     console.log("Sending game over message with score:", finalScore, "for user:", currentUsername);
-        postWebViewMessage({
-            type: 'gameOver',
-        data: { 
+    postWebViewMessage({
+        type: 'gameOver',
+        data: {
             finalScore,
             username: currentUsername // Explicitly include username
         }
     }).then(() => {
         console.log("Game over message sent successfully");
-        
+
         // Add a small delay before refreshing the leaderboard to allow server to process
         setTimeout(() => {
             // Request updated leaderboard data after sending score
@@ -955,14 +1034,14 @@ function gameOver() {
         }, 1000);
     }).catch(error => {
         console.error("Error sending game over message:", error);
-        
+
         // If we failed to send the score to the server, but we have a local update,
         // make sure our leaderboard screen shows it
         if (localLeaderboardUpdated) {
             console.log("Using locally updated leaderboard due to server error");
             renderLeaderboard(leaderboard);
         }
-        
+
         showError("Your score will be displayed locally, but couldn't be saved to the server. Check your connection and try again later.", ErrorState.CONNECTION_ERROR);
     });
 
@@ -972,6 +1051,11 @@ function gameOver() {
 
     // Check achievements
     checkAchievements(finalScore);
+
+    // Check for top player achievement
+    if (checkTopPlayerAchievement(finalScore)) {
+        showAward('platinum', 'You made it to the Top 5! 🎯');
+    }
 }
 
 function resetGame() {
@@ -980,20 +1064,20 @@ function resetGame() {
     if (gameOverContainer) {
         gameOverContainer.innerHTML = '';
     }
-    
+
     // Show paddle cursor and ball again
     if (paddleCursor) {
         paddleCursor.style.display = 'block';
         // Make sure we maintain the selected paddle
         paddleCursor.style.backgroundImage = `url('${selectedPaddle.image}')`;
     }
-    
+
     if (ball) {
         ball.style.visibility = 'visible';
         // Make sure we maintain the selected ball
         ball.style.backgroundImage = `url('${selectedBall.image}')`;
     }
-    
+
     // Reset game state
     gameStarted = false;
     resetBall();
@@ -1001,23 +1085,23 @@ function resetGame() {
     currentScore = 0;
     document.getElementById('score').textContent = '0';
     gameArea.classList.remove('game-over');
-    
+
     // Show instructions
     if (instructions) {
         instructions.textContent = 'Click to start!';
         instructions.style.display = 'block';
     }
-    
+
     // Reset cursor and enable game area interactions
     gameArea.style.cursor = 'none';
     gameArea.style.pointerEvents = 'auto';
-    
+
     // Re-add event listeners
     gameArea.removeEventListener('mousemove', handleMouseMove);
     gameArea.removeEventListener('touchmove', handleTouchMove);
     gameArea.removeEventListener('mousedown', startGame);
     gameArea.removeEventListener('touchstart', startGame);
-    
+
     gameArea.addEventListener('mousemove', handleMouseMove);
     gameArea.addEventListener('touchmove', handleTouchMove, { passive: false });
     gameArea.addEventListener('mousedown', startGame);
@@ -1028,7 +1112,7 @@ function resetGame() {
     cursorY = gameArea.offsetHeight - 100;
     lastCursorY = cursorY;
     updatePaddlePosition(cursorX, cursorY);
-    
+
     // Restart game loop if it was stopped
     if (!animationFrameId) {
         animationFrameId = requestAnimationFrame(gameLoop);
@@ -1039,19 +1123,19 @@ function backToMenu() {
     // Remove game over overlay
     const gameOverContainer = document.getElementById('game-over-container');
     gameOverContainer.innerHTML = '';
-    
+
     // Clean up game screen
     if (animationFrameId) {
         cancelAnimationFrame(animationFrameId);
         animationFrameId = null;
     }
-    
+
     // Hide paddle cursor and show ball
     if (paddleCursor) {
         paddleCursor.style.display = 'none';
     }
     ball.style.visibility = 'visible';
-    
+
     // Reset game state
     gameStarted = false;
     resetBall();
@@ -1059,11 +1143,11 @@ function backToMenu() {
     currentScore = 0;
     document.getElementById('score').textContent = '0';
     gameArea.classList.remove('game-over');
-    
+
     // Reset cursor and re-enable game area interactions
     gameArea.style.cursor = 'default';
     gameArea.style.pointerEvents = 'auto';
-    
+
     // Switch to menu screen
     showScreen('menu');
 }
@@ -1078,37 +1162,37 @@ function showHowToPlayModal() {
     }, 50);
 }
 
-document.querySelector('.modal-close').addEventListener('click', function() {
-  document.getElementById('how-to-play-modal').classList.remove('active');
+document.querySelector('.modal-close').addEventListener('click', function () {
+    document.getElementById('how-to-play-modal').classList.remove('active');
 });
 
 // Message handling functions
 async function postWebViewMessage(msg, attempt = 0) {
-  return new Promise((resolve, reject) => {
-  try {
-    window.parent.postMessage(msg, '*');
-    if (currentErrorState !== ErrorState.NONE) {
-      const errorOverlay = document.querySelector('.error-overlay');
-      if (errorOverlay) {
-        errorOverlay.remove();
-      }
-      currentErrorState = ErrorState.NONE;
-    }
-      resolve();
-  } catch (error) {
-    console.error('Error posting message:', error);
-    
-    if (attempt < MAX_RETRY_ATTEMPTS) {
-        setTimeout(() => {
-          postWebViewMessage(msg, attempt + 1)
-            .then(resolve)
-            .catch(reject);
-        }, RETRY_DELAY);
-      } else {
-        reject(error);
-      }
-    }
-  });
+    return new Promise((resolve, reject) => {
+        try {
+            window.parent.postMessage(msg, '*');
+            if (currentErrorState !== ErrorState.NONE) {
+                const errorOverlay = document.querySelector('.error-overlay');
+                if (errorOverlay) {
+                    errorOverlay.remove();
+                }
+                currentErrorState = ErrorState.NONE;
+            }
+            resolve();
+        } catch (error) {
+            console.error('Error posting message:', error);
+
+            if (attempt < MAX_RETRY_ATTEMPTS) {
+                setTimeout(() => {
+                    postWebViewMessage(msg, attempt + 1)
+                        .then(resolve)
+                        .catch(reject);
+                }, RETRY_DELAY);
+            } else {
+                reject(error);
+            }
+        }
+    });
 }
 
 // Track leaderboard request state
@@ -1118,23 +1202,23 @@ const LEADERBOARD_REQUEST_DEBOUNCE = 1000; // 1 second between requests
 
 // Enhanced error handling for the leaderboard
 function showLeaderboardError(message) {
-  console.error("Showing leaderboard error:", message);
-  const leaderboardEntries = document.getElementById('leaderboard-entries');
-  if (!leaderboardEntries) return;
-  
-  // Use a script-safe event handler
-  leaderboardEntries.innerHTML = `
+    console.error("Showing leaderboard error:", message);
+    const leaderboardEntries = document.getElementById('leaderboard-entries');
+    if (!leaderboardEntries) return;
+
+    // Use a script-safe event handler
+    leaderboardEntries.innerHTML = `
     <div class="leaderboard-error">
       <p>${message}</p>
       <button class="retry-button" id="retry-leaderboard-button">Retry</button>
     </div>
   `;
-  
-  // Add event listener programmatically to comply with Content Security Policy
-  const retryButton = document.getElementById('retry-leaderboard-button');
-  if (retryButton) {
-    retryButton.addEventListener('click', refreshLeaderboard);
-  }
+
+    // Add event listener programmatically to comply with Content Security Policy
+    const retryButton = document.getElementById('retry-leaderboard-button');
+    if (retryButton) {
+        retryButton.addEventListener('click', refreshLeaderboard);
+    }
 }
 
 // Request leaderboard data from Devvit
@@ -1144,34 +1228,34 @@ function refreshLeaderboard() {
         console.log("Leaderboard request already in progress or too recent");
         return;
     }
-    
+
     leaderboardRequestInProgress = true;
     lastLeaderboardRequestTime = now;
-    
+
     // Get active tab
     const activeTab = document.querySelector('.tab-button.active');
     const tab = activeTab ? activeTab.getAttribute('data-tab') : 'this-subreddit';
-    
-    postWebViewMessage({ 
+
+    postWebViewMessage({
         type: 'fetchLeaderboard',
         data: { tab }
     })
-    .catch(error => {
-        console.error("Failed to fetch leaderboard:", error);
-        leaderboardRequestInProgress = false;
-    });
+        .catch(error => {
+            console.error("Failed to fetch leaderboard:", error);
+            leaderboardRequestInProgress = false;
+        });
 }
 
 // Show loading indicator in leaderboard with custom message
 function showLeaderboardLoading(message = "Loading leaderboard...") {
-  console.log("Showing leaderboard loading indicator:", message);
-  const leaderboardEntries = document.getElementById('leaderboard-entries');
-  if (!leaderboardEntries) {
-    console.error("Leaderboard entries element not found");
-    return;
-  }
-  
-  leaderboardEntries.innerHTML = `
+    console.log("Showing leaderboard loading indicator:", message);
+    const leaderboardEntries = document.getElementById('leaderboard-entries');
+    if (!leaderboardEntries) {
+        console.error("Leaderboard entries element not found");
+        return;
+    }
+
+    leaderboardEntries.innerHTML = `
     <div class="loading-spinner">
       <div class="spinner"></div>
       <p>${message}</p>
@@ -1181,56 +1265,56 @@ function showLeaderboardLoading(message = "Loading leaderboard...") {
 
 // Helper function to debug leaderboard DOM structure
 function debugLeaderboardDOM() {
-  const leaderboardContainer = document.querySelector('.leaderboard-container');
-  const leaderboardEntries = document.getElementById('leaderboard-entries');
-  
-  if (!leaderboardContainer || !leaderboardEntries) {
-    console.error("Critical: Leaderboard container or entries element not found in DOM");
-    return;
-  }
-  
-  console.log("Leaderboard container exists:", leaderboardContainer);
-  console.log("Leaderboard entries element exists:", leaderboardEntries);
-  
-  // Check if entries were properly added
-  const entries = leaderboardEntries.querySelectorAll('.leaderboard-entry');
-  console.log(`Found ${entries.length} leaderboard entries in the DOM`);
-  
-  // Check for CSS issues that might hide elements
-  const computedStyle = window.getComputedStyle(leaderboardEntries);
-  console.log("Leaderboard entries display:", computedStyle.display);
-  console.log("Leaderboard entries visibility:", computedStyle.visibility);
-  console.log("Leaderboard entries opacity:", computedStyle.opacity);
-  console.log("Leaderboard entries height:", computedStyle.height);
-  
-  // Check parent containers
-  if (entries.length === 0) {
-    console.log("No entries found, checking HTML content:");
-    console.log(leaderboardEntries.innerHTML);
-  }
+    const leaderboardContainer = document.querySelector('.leaderboard-container');
+    const leaderboardEntries = document.getElementById('leaderboard-entries');
+
+    if (!leaderboardContainer || !leaderboardEntries) {
+        console.error("Critical: Leaderboard container or entries element not found in DOM");
+        return;
+    }
+
+    console.log("Leaderboard container exists:", leaderboardContainer);
+    console.log("Leaderboard entries element exists:", leaderboardEntries);
+
+    // Check if entries were properly added
+    const entries = leaderboardEntries.querySelectorAll('.leaderboard-entry');
+    console.log(`Found ${entries.length} leaderboard entries in the DOM`);
+
+    // Check for CSS issues that might hide elements
+    const computedStyle = window.getComputedStyle(leaderboardEntries);
+    console.log("Leaderboard entries display:", computedStyle.display);
+    console.log("Leaderboard entries visibility:", computedStyle.visibility);
+    console.log("Leaderboard entries opacity:", computedStyle.opacity);
+    console.log("Leaderboard entries height:", computedStyle.height);
+
+    // Check parent containers
+    if (entries.length === 0) {
+        console.log("No entries found, checking HTML content:");
+        console.log(leaderboardEntries.innerHTML);
+    }
 }
 
 // Render leaderboard with data
 function renderLeaderboard(leaderboardData) {
     console.log("Rendering leaderboard with data:", leaderboardData);
     leaderboardRequestInProgress = false; // Ensure flag is reset regardless of success or failure
-    
+
     const leaderboardEntries = document.getElementById('leaderboard-entries');
-    
+
     if (!leaderboardEntries) {
         console.error("Leaderboard entries element not found");
         return;
     }
-    
+
     // Clear any existing loading indicators or error messages
     const loadingIndicator = document.querySelector('.loading-spinner');
     if (loadingIndicator) {
         loadingIndicator.remove();
     }
-    
+
     // Start with empty entries HTML
     let entriesHTML = '';
-    
+
     // Use guaranteed data if no valid data is provided
     if (!Array.isArray(leaderboardData) || leaderboardData.length === 0) {
         console.log("Using guaranteed fallback data for rendering");
@@ -1241,13 +1325,13 @@ function renderLeaderboard(leaderboardData) {
             createdAt: "2025-03-18T17:10:38.858Z",
             updatedAt: "2025-03-19T07:00:07.239Z"
         }];
-        
+
         // Update the global leaderboard variable
         leaderboard = leaderboardData;
     }
-    
+
     console.log(`Processing ${leaderboardData.length} leaderboard entries for display`);
-    
+
     // Add entries
     leaderboardData.forEach((entry, index) => {
         // Ensure entry has all required fields and debug
@@ -1255,24 +1339,24 @@ function renderLeaderboard(leaderboardData) {
             console.error(`Invalid entry at index ${index}:`, entry);
             return;
         }
-        
+
         console.log(`Processing entry ${index}:`, entry);
-        
+
         const username = entry.username || 'Unknown';
         const score = entry.score || 0;
         const rank = entry.rank || (index + 1);
-        
+
         const isCurrentUser = username === currentUsername;
         const formattedDate = formatDate(entry.updatedAt);
-        
+
         console.log(`Entry details - Username: ${username}, Score: ${score}, Rank: ${rank}, IsCurrentUser: ${isCurrentUser}`);
-        
+
         entriesHTML += `
             <div class="leaderboard-entry ${isCurrentUser ? 'current-user' : ''} rank-${rank}">
                 <div class="rank-col">
-                    ${rank <= 3 ? 
-                        `<span class="rank-medal rank-${rank}">${rank}</span>` : 
-                        rank}
+                    ${rank <= 3 ?
+                `<span class="rank-medal rank-${rank}">${rank}</span>` :
+                rank}
                 </div>
                 <div class="name-col">
                     <span class="user-avatar"></span>
@@ -1284,19 +1368,19 @@ function renderLeaderboard(leaderboardData) {
             </div>
         `;
     });
-    
+
     // The code to display empty state message is removed since we always show at least the fallback data
-    
+
     console.log("Updating leaderboard HTML with entries");
     // Update the entries container with our HTML
     leaderboardEntries.innerHTML = entriesHTML;
-    
+
     // Add a subtle animation to show the leaderboard has updated
     leaderboardEntries.classList.add('updated');
     setTimeout(() => {
         leaderboardEntries.classList.remove('updated');
     }, 500);
-    
+
     // Debug the DOM structure after rendering
     setTimeout(debugLeaderboardDOM, 100);
 }
@@ -1304,11 +1388,11 @@ function renderLeaderboard(leaderboardData) {
 // Helper function to format dates
 function formatDate(dateString) {
     if (!dateString) return 'Unknown';
-    
+
     try {
         const date = new Date(dateString);
         return `${date.getMonth() + 1}/${date.getDate()}/${date.getFullYear()}`;
-        } catch (error) {
+    } catch (error) {
         console.error('Error formatting date:', error);
         return 'Unknown';
     }
@@ -1321,27 +1405,27 @@ function resetGameState() {
     if (gameOverContainer) {
         gameOverContainer.innerHTML = '';
     }
-    
+
     // Reset game area state
     gameArea.classList.remove('game-over');
     gameArea.style.cursor = 'default';
     gameArea.style.pointerEvents = 'auto';
-    
+
     // Reset ball and paddle
     if (ball) {
         ball.style.visibility = 'hidden';
     }
-    
+
     if (paddleCursor) {
         paddleCursor.style.display = 'none';
     }
-    
+
     // Stop game loop if it's running
     if (animationFrameId) {
         cancelAnimationFrame(animationFrameId);
         animationFrameId = null;
     }
-    
+
     // Reset game variables
     gameStarted = false;
     currentScore = 0;
@@ -1352,7 +1436,7 @@ function resetGameState() {
 // Helper function to find the user's high score in the leaderboard
 function findUserHighScore(leaderboardData, username) {
     if (!leaderboardData || !leaderboardData.length || !username) return 0;
-    
+
     const userEntry = leaderboardData.find(entry => entry.username === username);
     return userEntry ? userEntry.score : 0;
 }
@@ -1361,43 +1445,43 @@ function findUserHighScore(leaderboardData, username) {
 function createParticleExplosion(x, y, count) {
     // Limit maximum particles for performance
     count = Math.min(count, 8);
-    
+
     for (let i = 0; i < count; i++) {
         const particle = document.createElement('div');
         particle.className = 'particle';
         gameArea.appendChild(particle);
-        
+
         const angle = (Math.random() * Math.PI * 2);
         const velocity = 2 + Math.random() * 2;
         const vx = Math.cos(angle) * velocity;
         const vy = Math.sin(angle) * velocity;
         let lifetime = 0;
-        
+
         particle.style.left = x + 'px';
         particle.style.top = y + 'px';
-        
+
         const startTime = performance.now();
         const duration = 500; // 0.5 seconds
-        
+
         function updateParticle(currentTime) {
             const elapsed = currentTime - startTime;
             if (elapsed >= duration) {
                 particle.remove();
                 return;
             }
-            
+
             lifetime = elapsed / duration;
             const newX = x + vx * lifetime * 60;
             const newY = y + vy * lifetime * 60;
             const opacity = 1 - lifetime;
             const scale = 1 - lifetime;
-            
+
             particle.style.transform = `translate(${newX - x}px, ${newY - y}px) scale(${scale})`;
             particle.style.opacity = opacity;
-            
+
             requestAnimationFrame(updateParticle);
         }
-        
+
         requestAnimationFrame(updateParticle);
     }
 }
@@ -1426,23 +1510,23 @@ const sounds = {
 
 function playSound(soundName) {
     if (!window.AudioContext) return;
-    
+
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
     const sound = sounds[soundName];
     if (!sound) return;
-    
+
     const oscillator = ctx.createOscillator();
     const gainNode = ctx.createGain();
-    
+
     oscillator.type = sound.type;
     oscillator.frequency.value = sound.frequency;
-    
+
     gainNode.gain.setValueAtTime(sound.volume, ctx.currentTime);
     gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + sound.duration);
-    
+
     oscillator.connect(gainNode);
     gainNode.connect(ctx.destination);
-    
+
     oscillator.start();
     oscillator.stop(ctx.currentTime + sound.duration);
 }
@@ -1462,53 +1546,53 @@ function createGameOverExplosion(x, y) {
         'var(--primary-light)',
         '#fff'
     ];
-    
+
     // Create multiple rings of particles
     for (let ring = 0; ring < 3; ring++) {
         const particleCount = 12 + (ring * 8);
         const radius = 100 + (ring * 50);
         const delay = ring * 100;
-        
+
         setTimeout(() => {
             for (let i = 0; i < particleCount; i++) {
                 const particle = document.createElement('div');
                 particle.className = 'particle';
                 gameArea.appendChild(particle);
-                
+
                 const angle = (i / particleCount) * Math.PI * 2;
                 const velocity = 3 + Math.random() * 2;
                 const size = 4 + Math.random() * 4;
-                
+
                 particle.style.width = size + 'px';
                 particle.style.height = size + 'px';
                 particle.style.background = colors[Math.floor(Math.random() * colors.length)];
-                
+
                 let particleX = x;
                 let particleY = y;
                 let progress = 0;
-                
+
                 function updateParticle() {
-                    progress += 1/60;
+                    progress += 1 / 60;
                     if (progress >= 1) {
                         particle.remove();
                         return;
                     }
-                    
+
                     const distance = radius * Math.pow(progress, 0.5);
                     particleX = x + Math.cos(angle) * distance;
                     particleY = y + Math.sin(angle) * distance;
-                    
+
                     const scale = 1 - progress;
                     const opacity = 1 - progress;
-                    
+
                     particle.style.left = particleX + 'px';
                     particle.style.top = particleY + 'px';
                     particle.style.opacity = opacity;
                     particle.style.transform = `scale(${scale})`;
-                    
+
                     requestAnimationFrame(updateParticle);
                 }
-                
+
                 requestAnimationFrame(updateParticle);
             }
         }, delay);
@@ -1517,155 +1601,155 @@ function createGameOverExplosion(x, y) {
 
 // Initialize game variables
 let achievements = {
-  beginner: false,
-  novice: false,
-  master: false,
-  legend: false,
-  firstBounce: false,
-  quickReflexes: false
+    beginner: false,
+    novice: false,
+    master: false,
+    legend: false,
+    firstBounce: false,
+    quickReflexes: false
 };
 
 // Load achievements from localStorage
 function loadAchievements() {
-  const savedAchievements = localStorage.getItem('dontdrop_achievements');
-  if (savedAchievements) {
-    achievements = JSON.parse(savedAchievements);
-    updateAchievementDisplay();
-  }
+    const savedAchievements = localStorage.getItem('dontdrop_achievements');
+    if (savedAchievements) {
+        achievements = JSON.parse(savedAchievements);
+        updateAchievementDisplay();
+    }
 }
 
 // Save achievements to localStorage
 function saveAchievements() {
-  localStorage.setItem('dontdrop_achievements', JSON.stringify(achievements));
+    localStorage.setItem('dontdrop_achievements', JSON.stringify(achievements));
 }
 
 // Update the achievement display
 function updateAchievementDisplay() {
-  for (const achievement in achievements) {
-    const element = document.querySelector(`.achievement-status[data-achievement="${achievement}"]`);
-    if (element && achievements[achievement]) {
-      element.textContent = "Unlocked";
-      element.classList.add("unlocked");
+    for (const achievement in achievements) {
+        const element = document.querySelector(`.achievement-status[data-achievement="${achievement}"]`);
+        if (element && achievements[achievement]) {
+            element.textContent = "Unlocked";
+            element.classList.add("unlocked");
+        }
     }
-  }
 }
 
 // Check and unlock achievements
 function checkAchievements(score) {
-  // Score-based achievements
-  if (score >= 10 && !achievements.beginner) {
-    unlockAchievement('beginner', 'Ping Pong Beginner');
-  }
-  if (score >= 50 && !achievements.novice) {
-    unlockAchievement('novice', 'Table Tennis Novice');
-  }
-  if (score >= 100 && !achievements.master) {
-    unlockAchievement('master', 'Paddle Master');
-  }
-  if (score >= 250 && !achievements.legend) {
-    unlockAchievement('legend', 'Reddit Legend');
-  }
+    // Score-based achievements
+    if (score >= 10 && !achievements.beginner) {
+        unlockAchievement('beginner', 'Ping Pong Beginner');
+    }
+    if (score >= 50 && !achievements.novice) {
+        unlockAchievement('novice', 'Table Tennis Novice');
+    }
+    if (score >= 100 && !achievements.master) {
+        unlockAchievement('master', 'Paddle Master');
+    }
+    if (score >= 250 && !achievements.legend) {
+        unlockAchievement('legend', 'Reddit Legend');
+    }
 }
 
 // Unlock achievement and show notification
 function unlockAchievement(achievementId, achievementName) {
-  achievements[achievementId] = true;
-  saveAchievements();
-  updateAchievementDisplay();
-  
-  // Show Reddit-style award notification
-  showAward('gold', `Achievement Unlocked: ${achievementName}`);
+    achievements[achievementId] = true;
+    saveAchievements();
+    updateAchievementDisplay();
+
+    // Show Reddit-style award notification
+    showAward('gold', `Achievement Unlocked: ${achievementName}`);
 }
 
 // Show Reddit award notification
 function showAward(type, text) {
-  const template = document.getElementById('award-template');
-  const award = template.cloneNode(true);
-  award.removeAttribute('id');
-  award.style.display = 'flex';
-  
-  const awardIcon = award.querySelector('.award-icon');
-  awardIcon.className = `award-icon award-${type}`;
-  
-  const awardText = award.querySelector('.award-text');
-  awardText.textContent = text;
-  
-  document.body.appendChild(award);
-  
-  setTimeout(() => {
-    award.classList.add('show');
-  }, 100);
-  
-  setTimeout(() => {
-    award.classList.remove('show');
+    const template = document.getElementById('award-template');
+    const award = template.cloneNode(true);
+    award.removeAttribute('id');
+    award.style.display = 'flex';
+
+    const awardIcon = award.querySelector('.award-icon');
+    awardIcon.className = `award-icon award-${type}`;
+
+    const awardText = award.querySelector('.award-text');
+    awardText.textContent = text;
+
+    document.body.appendChild(award);
+
     setTimeout(() => {
-      award.remove();
-    }, 500);
-  }, 3000);
+        award.classList.add('show');
+    }, 100);
+
+    setTimeout(() => {
+        award.classList.remove('show');
+        setTimeout(() => {
+            award.remove();
+        }, 500);
+    }, 3000);
 }
 
 // Share functions
 function shareToReddit(score) {
-  const text = `I just scored ${score} points in Don't Drop! Can you beat my score?`;
-  const url = encodeURIComponent(window.location.href);
-  window.open(`https://www.reddit.com/submit?url=${url}&title=${encodeURIComponent(text)}`, '_blank');
+    const text = `I just scored ${score} points in Don't Drop! Can you beat my score?`;
+    const url = encodeURIComponent(window.location.href);
+    window.open(`https://www.reddit.com/submit?url=${url}&title=${encodeURIComponent(text)}`, '_blank');
 }
 
 function shareToTwitter(score) {
-  const text = `I just scored ${score} points in Don't Drop! Can you beat my score? #DontDrop #RedditGame`;
-  const url = encodeURIComponent(window.location.href);
-  window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${url}`, '_blank');
+    const text = `I just scored ${score} points in Don't Drop! Can you beat my score? #DontDrop #RedditGame`;
+    const url = encodeURIComponent(window.location.href);
+    window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${url}`, '_blank');
 }
 
 function handleBallHit() {
-  // Create hit effect
-  createHitEffect(ball.x, ball.y + ball.height);
-  
-  // Play sound
-  playSound('hit');
-  
-  // Add score based on ball height (higher = more points)
-  const scoreGain = Math.max(1, Math.floor((gameArea.offsetHeight - ball.y) / 100));
-  currentScore += scoreGain;
-  
-  // Update score display
-  updateScore();
-  
-  // Flash score
-  const scoreElement = document.getElementById('score');
-  scoreElement.classList.remove('flash');
-  void scoreElement.offsetWidth; // Trigger reflow
-  scoreElement.classList.add('flash');
-  
-  // Show score popup
-  showScorePopup(ball.x, ball.y, scoreGain);
-  
-  // Check for first bounce achievement
-  if (!achievements.firstBounce) {
-    unlockAchievement('firstBounce', 'First Bounce');
-  }
-  
-  // Check for quick reflexes achievement (if ball speed is high)
-  if (ballSpeedY > 10 && !achievements.quickReflexes) {
-    unlockAchievement('quickReflexes', 'Quick Reflexes');
-  }
+    // Create hit effect
+    createHitEffect(ball.x, ball.y + ball.height);
+
+    // Play sound
+    playSound('hit');
+
+    // Add score based on ball height (higher = more points)
+    const scoreGain = Math.max(1, Math.floor((gameArea.offsetHeight - ball.y) / 100));
+    currentScore += scoreGain;
+
+    // Update score display
+    updateScore();
+
+    // Flash score
+    const scoreElement = document.getElementById('score');
+    scoreElement.classList.remove('flash');
+    void scoreElement.offsetWidth; // Trigger reflow
+    scoreElement.classList.add('flash');
+
+    // Show score popup
+    showScorePopup(ball.x, ball.y, scoreGain);
+
+    // Check for first bounce achievement
+    if (!achievements.firstBounce) {
+        unlockAchievement('firstBounce', 'First Bounce');
+    }
+
+    // Check for quick reflexes achievement (if ball speed is high)
+    if (ballSpeedY > 10 && !achievements.quickReflexes) {
+        unlockAchievement('quickReflexes', 'Quick Reflexes');
+    }
 }
 
 // Handle messages from Devvit - add error handling
 window.addEventListener('message', async (event) => {
     if (!event.data || event.data.type !== 'devvit-message') return;
-    
+
     try {
         const { message } = event.data.data;
         if (!message) return;
-      
+
         console.log("Received message from Devvit:", message.type, message);
-        
+
         switch (message.type) {
             case 'error':
                 showError(message.data.message);
                 break;
-                
+
             case 'initialData':
                 // Store the username provided by server
                 if (message.data.username) {
@@ -1673,21 +1757,21 @@ window.addEventListener('message', async (event) => {
                     confirmedUsername = true;
                     // Save to localStorage as a backup
                     localStorage.setItem('dontdrop_username', currentUsername);
-                    
+
                     // Update UI to show Reddit username
                     const usernameElements = document.querySelectorAll('.username-display');
                     usernameElements.forEach(el => {
                         el.textContent = currentUsername;
                     });
-                    
+
                     // Update welcome message if exists
                     const welcomeMessage = document.querySelector('.welcome-message');
                     if (welcomeMessage) {
                         welcomeMessage.textContent = `Welcome, ${currentUsername}!`;
                     }
-                    
+
                     console.log(`Reddit username set from server: ${currentUsername}`);
-                    
+
                     // Force update the game instructions if already showing
                     const instructions = document.getElementById('instructions');
                     if (instructions && instructions.style.display === 'block') {
@@ -1698,20 +1782,20 @@ window.addEventListener('message', async (event) => {
                     currentUsername = "Due_Analyst_5617";
                     localStorage.setItem('dontdrop_username', currentUsername);
                 }
-                
+
                 // Process the leaderboard data from initialData
                 try {
                     if (message.data.leaderboard && Array.isArray(message.data.leaderboard) && message.data.leaderboard.length > 0) {
                         // Store as a new array to avoid reference issues
                         leaderboard = JSON.parse(JSON.stringify(message.data.leaderboard));
-                        
+
                         // Sort by rank if needed
                         if (leaderboard.length > 1) {
                             leaderboard.sort((a, b) => a.rank - b.rank);
                         }
-                        
+
                         console.log("Processed leaderboard data:", leaderboard);
-                        
+
                         // Immediately render the leaderboard if we're on that screen
                         if (document.getElementById('leaderboard-screen').classList.contains('active')) {
                             console.log("Leaderboard screen is active, rendering immediately");
@@ -1727,7 +1811,7 @@ window.addEventListener('message', async (event) => {
                             createdAt: "2025-03-18T17:10:38.858Z",
                             updatedAt: "2025-03-19T07:00:07.239Z"
                         }];
-                        
+
                         // Render if active
                         if (document.getElementById('leaderboard-screen').classList.contains('active')) {
                             renderLeaderboard(leaderboard);
@@ -1743,17 +1827,17 @@ window.addEventListener('message', async (event) => {
                         createdAt: "2025-03-18T17:10:38.858Z",
                         updatedAt: "2025-03-19T07:00:07.239Z"
                     }];
-                    
+
                     if (document.getElementById('leaderboard-screen').classList.contains('active')) {
                         renderLeaderboard(leaderboard);
                     }
                 }
                 break;
-                
+
             case 'leaderboardData':
                 console.log("Received leaderboardData response with entries:", message.data?.leaderboard?.length || 0);
                 leaderboardRequestInProgress = false; // Request completed
-                
+
                 // Check if the server is confirming our username
                 if (message.data?.username && message.data.username !== currentUsername) {
                     console.log(`Server confirmed different username in leaderboardData: ${message.data.username}, updating from ${currentUsername}`);
@@ -1767,20 +1851,20 @@ window.addEventListener('message', async (event) => {
                         localStorage.setItem('dontdrop_username', currentUsername);
                     }
                 }
-                
+
                 // Process the leaderboard data - but include fallback
                 try {
                     if (message.data && message.data.leaderboard && Array.isArray(message.data.leaderboard) && message.data.leaderboard.length > 0) {
                         console.log("Updating leaderboard with received data:", message.data.leaderboard);
-                        
+
                         // Create a deep copy of the array to avoid reference issues
                         leaderboard = JSON.parse(JSON.stringify(message.data.leaderboard));
-                        
+
                         // Sort by rank if needed
                         if (leaderboard.length > 1) {
                             leaderboard.sort((a, b) => a.rank - b.rank);
                         }
-                        
+
                         console.log("Processed leaderboard data for rendering:", leaderboard);
                     } else {
                         console.warn("No valid leaderboard data in response, using fallback");
@@ -1802,11 +1886,31 @@ window.addEventListener('message', async (event) => {
                         updatedAt: "2025-03-19T07:00:07.239Z"
                     }];
                 }
-                
+
                 // Always render the leaderboard with whatever data we have
                 renderLeaderboard(leaderboard);
                 break;
-                
+
+            case 'requestImageUrl':
+                console.log("Received requestImageUrl message:", message.data);
+                // Handle the image URL request
+                if (message.data && message.data.itemType) {
+                    const { itemType } = message.data;
+
+                    // Show a dialog to prompt the user for an image URL
+                    showImageUrlDialog(itemType);
+                } else {
+                    console.error("Invalid requestImageUrl message data");
+                    showError("Failed to process image upload request. Please try again.");
+                }
+                break;
+
+            case 'customWeaponsData':
+                console.log("Received customWeaponsData message:", message.data);
+                // Handle the custom weapons data
+                handleCustomWeaponsData(message.data);
+                break;
+
             // Keep other cases from the original code
         }
     } catch (error) {
@@ -1821,7 +1925,7 @@ window.addEventListener('message', async (event) => {
                 createdAt: "2025-03-18T17:10:38.858Z",
                 updatedAt: "2025-03-19T07:00:07.239Z"
             }];
-            
+
             // If leaderboard is currently shown, update it
             if (document.getElementById('leaderboard-screen').classList.contains('active')) {
                 renderLeaderboard(leaderboard);
@@ -1831,23 +1935,23 @@ window.addEventListener('message', async (event) => {
 });
 
 function showAchievement(text) {
-  const achievement = document.createElement('div');
-  achievement.className = 'achievement';
-  achievement.innerHTML = `
+    const achievement = document.createElement('div');
+    achievement.className = 'achievement';
+    achievement.innerHTML = `
     <div class="achievement-icon trophy"></div>
     <div class="achievement-text">${text}</div>
   `;
-  
-  document.body.appendChild(achievement);
-  
-  // Trigger animation
-  requestAnimationFrame(() => {
-    achievement.classList.add('show');
-    setTimeout(() => {
-      achievement.classList.remove('show');
-      setTimeout(() => achievement.remove(), 300);
-    }, 3000);
-  });
+
+    document.body.appendChild(achievement);
+
+    // Trigger animation
+    requestAnimationFrame(() => {
+        achievement.classList.add('show');
+        setTimeout(() => {
+            achievement.classList.remove('show');
+            setTimeout(() => achievement.remove(), 300);
+        }, 3000);
+    });
 }
 
 // Network state handlers
@@ -1871,37 +1975,37 @@ document.addEventListener('DOMContentLoaded', () => {
         highScore = loadedScore;
         highScoreElement.textContent = loadedScore.toString();
     }
-    
+
     // Reset current score
     const scoreElement = document.getElementById('score');
     if (scoreElement) {
         currentScore = 0;
         scoreElement.textContent = '0';
     }
-    
+
     // Set a default username if none exists
     if (!currentUsername) {
         currentUsername = "Due_Analyst_5617";
         console.log("Setting default username:", currentUsername);
     }
-    
+
     // Try to restore username from localStorage as a TEMPORARY fallback until we get the real username from Reddit
     const savedUsername = localStorage.getItem('dontdrop_username');
     if (savedUsername && savedUsername !== '') {
         currentUsername = savedUsername;
-        
+
         // Update any username displays on the page
         const usernameElements = document.querySelectorAll('.username-display');
         usernameElements.forEach(el => {
             el.textContent = currentUsername;
         });
-        
+
         console.log("Using cached username from localStorage temporarily:", currentUsername);
     } else {
         console.log("No cached username found, using default username:", currentUsername);
         localStorage.setItem('dontdrop_username', currentUsername);
     }
-    
+
     // Immediately populate the leaderboard with fallback data
     leaderboard = [{
         username: "Due_Analyst_5617",
@@ -1910,21 +2014,24 @@ document.addEventListener('DOMContentLoaded', () => {
         createdAt: "2025-03-18T17:10:38.858Z",
         updatedAt: "2025-03-19T07:00:07.239Z"
     }];
-    
+
     // Initialize menu and game after ensuring DOM is loaded
     initMenu();
-    
+
     // Request data from server IMMEDIATELY to get the real Reddit username
     console.log("Requesting data from server to get Reddit username");
     postWebViewMessage({ type: 'webViewReady' })
         .then(() => {
             console.log("webViewReady message sent successfully");
+
+            // After successful connection, request custom weapons
+            requestCustomWeapons();
         })
         .catch(error => {
             console.error("Error sending webViewReady message:", error);
             showError("Couldn't connect to Reddit. Please check your connection and refresh the page.", ErrorState.CONNECTION_ERROR);
         });
-    
+
     // Load saved achievements
     loadAchievements();
 
@@ -1943,7 +2050,7 @@ document.addEventListener('DOMContentLoaded', () => {
             document.querySelectorAll('.screen').forEach(screen => {
                 screen.classList.remove('active');
             });
-            
+
             // Show menu screen
             const menuScreen = document.getElementById('menu-screen');
             if (menuScreen) {
@@ -1955,19 +2062,19 @@ document.addEventListener('DOMContentLoaded', () => {
     if (startGameWithWeaponsBtn) {
         startGameWithWeaponsBtn.addEventListener('click', startGameWithWeapons);
     }
-    
+
     const backFromBadgesBtn = document.getElementById('back-from-badges-btn');
     if (backFromBadgesBtn) {
-      backFromBadgesBtn.addEventListener('click', function() {
-        // Hide badges screen
-        document.getElementById('badges-screen').classList.remove('active');
-        
-        // Show menu screen
-        const menuScreen = document.getElementById('menu-screen');
-        if (menuScreen) {
-          menuScreen.classList.add('active');
-        }
-      });
+        backFromBadgesBtn.addEventListener('click', function () {
+            // Hide badges screen
+            document.getElementById('badges-screen').classList.remove('active');
+
+            // Show menu screen
+            const menuScreen = document.getElementById('menu-screen');
+            if (menuScreen) {
+                menuScreen.classList.add('active');
+            }
+        });
     }
 });
 
@@ -1977,17 +2084,17 @@ function showWeaponSelection() {
     document.querySelectorAll('.screen').forEach(screen => {
         screen.classList.remove('active');
     });
-    
+
     // Show paddle selection screen first
     const paddleScreen = document.getElementById('paddle-selection-screen');
-    
+
     if (!paddleScreen) {
         console.error('Paddle selection screen not found');
         return;
     }
-    
+
     paddleScreen.classList.add('active');
-    
+
     // Populate paddle selection UI
     populatePaddleSelection();
 }
@@ -1995,10 +2102,10 @@ function showWeaponSelection() {
 function createWeaponTooltip(weapon) {
     const tooltip = document.createElement('div');
     tooltip.className = 'weapon-tooltip';
-    
+
     let powerDescription = '';
     if (weapon.specialPower) {
-        switch(weapon.specialPower) {
+        switch (weapon.specialPower) {
             case "extraBounce":
                 powerDescription = "30% chance to gain extra bounce height on hit";
                 break;
@@ -2013,7 +2120,7 @@ function createWeaponTooltip(weapon) {
                 break;
         }
     }
-    
+
     tooltip.innerHTML = `
         <div class="tooltip-header">${weapon.name}</div>
         <div class="tooltip-stats">
@@ -2040,26 +2147,735 @@ function createWeaponTooltip(weapon) {
             </div>
         ` : ''}
     `;
-    
+
     return tooltip;
 }
 
+// Request custom weapons from the server
+function requestCustomWeapons() {
+    console.log("Requesting custom weapons from server");
+    
+    try {
+        // Send request to server for custom weapons data
+        postWebViewMessage({
+            type: 'requestCustomItems',
+            data: { username: username }
+        })
+        .then(response => {
+            console.log("Custom weapons request sent successfully");
+        })
+        .catch(error => {
+            console.error("Error requesting custom weapons:", error);
+            // Show error notification to user
+            showError("Failed to load custom items. Please try again later.");
+        });
+    } catch (err) {
+        console.error("Failed to request custom weapons:", err);
+        showError("An unexpected error occurred while loading custom items.");
+    }
+}
+
+// Handle custom weapons data received from server
+function handleCustomWeaponsData(data) {
+    console.log("Processing custom weapons data:", data);
+    
+    // Check if we have paddle data (previously called 'weapon')
+    if (data.weapon && Array.isArray(data.weapon)) {
+        customWeapons = data.weapon || [];
+        console.log(`Received ${customWeapons.length} custom paddles`);
+        
+        // Process custom paddles if we have any
+        if (customWeapons.length > 0) {
+            customWeapons.forEach(weapon => {
+                // Add custom paddle to weapons system
+                if (weapon.id && weapon.imageUrl) {
+                    // Create a unique key for the custom paddle
+                    const paddleKey = `custom_${weapon.id}`;
+                    
+                    // Add to weapons system
+                    weapons.paddles[paddleKey] = {
+                        name: weapon.name || 'Custom Paddle',
+                        image: weapon.imageUrl,
+                        bounceHeight: weapon.properties?.bounceHeight || 1.0,
+                        speedMultiplier: weapon.properties?.speedMultiplier || 1.0,
+                        unlockScore: 0, // Custom weapons are always unlocked
+                        specialPower: weapon.properties?.specialPower || null,
+                        isCustom: true
+                    };
+                    
+                    console.log(`Added custom paddle: ${paddleKey}`, weapons.paddles[paddleKey]);
+                }
+            });
+        }
+    } else {
+        console.log("No custom paddles received or invalid data format");
+    }
+    
+    // Check if we have ball data
+    if (data.ball && Array.isArray(data.ball)) {
+        customBalls = data.ball || [];
+        console.log(`Received ${customBalls.length} custom balls`);
+        
+        // Process custom balls if we have any
+        if (customBalls.length > 0) {
+            customBalls.forEach(ball => {
+                // Add custom ball to weapons system
+                if (ball.id && ball.imageUrl) {
+                    // Create a unique key for the custom ball
+                    const ballKey = `custom_${ball.id}`;
+                    
+                    // Add to weapons system
+                    weapons.balls[ballKey] = {
+                        name: ball.name || 'Custom Ball',
+                        image: ball.imageUrl,
+                        speedMultiplier: ball.properties?.speedMultiplier || 1.0,
+                        bounceMultiplier: ball.properties?.bounceMultiplier || 1.0,
+                        unlockScore: 0, // Custom weapons are always unlocked
+                        gravity: ball.properties?.gravity || 0.2,
+                        isCustom: true
+                    };
+                    
+                    console.log(`Added custom ball: ${ballKey}`, weapons.balls[ballKey]);
+                }
+            });
+        }
+    } else {
+        console.log("No custom balls received or invalid data format");
+    }
+    
+    // Update the weapons selection UI if it's currently open
+    const paddleContainer = document.getElementById('paddle-selection');
+    if (paddleContainer && paddleContainer.parentElement && paddleContainer.parentElement.classList.contains('active')) {
+        populatePaddleSelection();
+    }
+    
+    const ballContainer = document.getElementById('ball-selection');
+    if (ballContainer && ballContainer.parentElement && ballContainer.parentElement.classList.contains('active')) {
+        populateBallSelection();
+    }
+}
+
+// Request custom weapons from server
+function requestCustomWeapons() {
+    console.log("Requesting custom weapons from server");
+    
+    try {
+        postWebViewMessage({
+            type: 'fetchCustomWeapons',
+            data: { username: username }
+        })
+        .then(response => {
+            console.log("Custom weapons request sent successfully");
+        })
+        .catch(error => {
+            console.error("Error requesting custom weapons:", error);
+            showError("Failed to load custom items. Please try again later.");
+        });
+    } catch (err) {
+        console.error("Failed to request custom weapons:", err);
+        showError("An unexpected error occurred while loading custom items.");
+    }
+}
+
+// Request image upload URL from server
+function requestImageUpload(itemType) {
+    console.log(`Requesting image upload URL for ${itemType}`);
+    postWebViewMessage({
+        type: 'requestImageUpload',
+        data: { itemType }
+    })
+        .catch(error => {
+            console.error("Error requesting image upload:", error);
+            showError("Failed to request image upload. Please try again later.");
+        });
+}
+
+// Handle upload URL received from server
+function handleUploadUrlGenerated(data) {
+    console.log("Received upload URL:", data);
+    if (data && data.uploadUrl) {
+        // Show upload dialog
+        showImageUploadDialog(data.uploadUrl, data.itemType);
+    }
+}
+
+// Show image URL dialog for custom items
+function showImageUrlDialog(itemType) {
+    // Create modal for image URL input
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.id = 'upload-modal';
+
+    const itemTypeDisplay = itemType === 'weapon' ? 'Paddle' : 'Ball';
+
+    modal.innerHTML = `
+        <div class="modal-content custom-item-modal">
+            <div class="modal-header">
+                <h2>Add Custom ${itemTypeDisplay}</h2>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="upload-form">
+                    <div class="form-group">
+                        <label for="item-name">Name your ${itemTypeDisplay}:</label>
+                        <input type="text" id="item-name" placeholder="Enter a name" maxlength="20" class="custom-input">
+                    </div>
+                    <div class="form-group">
+                        <label for="item-url">Image URL:</label>
+                        <input type="url" id="item-url" placeholder="https://example.com/image.png" class="custom-input">
+                        <p class="help-text">Paste a direct link to an image (PNG or JPG)</p>
+                    </div>
+                    <div class="preview-container">
+                        <img id="image-preview" style="display: none; max-width: 100%; max-height: 200px; border-radius: 8px; margin-top: 10px;">
+                    </div>
+                    <div class="upload-actions">
+                        <button id="upload-button" class="primary-button" disabled>Add ${itemTypeDisplay}</button>
+                        <button id="cancel-upload" class="secondary-button">Cancel</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+
+    // Add some custom styles for the modal
+    const style = document.createElement('style');
+    style.textContent = `
+        .custom-item-modal {
+            background: #222;
+            border-radius: 12px;
+            border: 2px solid #444;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+        }
+        .custom-item-modal .modal-header {
+            background: #333;
+            border-bottom: 2px solid #444;
+            padding: 15px 20px;
+            border-radius: 10px 10px 0 0;
+        }
+        .custom-item-modal .modal-body {
+            padding: 20px;
+        }
+        .custom-item-modal h2 {
+            color: #fff;
+            margin: 0;
+            font-size: 1.5em;
+        }
+        .custom-item-modal .form-group {
+            margin-bottom: 15px;
+        }
+        .custom-item-modal label {
+            display: block;
+            margin-bottom: 8px;
+            color: #ddd;
+            font-weight: bold;
+        }
+        .custom-input {
+            width: 100%;
+            padding: 10px;
+            border-radius: 6px;
+            border: 1px solid #444;
+            background: #333;
+            color: #fff;
+            font-size: 16px;
+        }
+        .custom-input:focus {
+            outline: none;
+            border-color: #666;
+            box-shadow: 0 0 5px rgba(255,255,255,0.2);
+        }
+        .help-text {
+            color: #999;
+            font-size: 0.9em;
+            margin-top: 5px;
+        }
+        .upload-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        .primary-button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.2s;
+        }
+        .primary-button:hover {
+            background: #3e8e41;
+        }
+        .primary-button:disabled {
+            background: #666;
+            cursor: not-allowed;
+        }
+        .secondary-button {
+            background: #666;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .secondary-button:hover {
+            background: #555;
+        }
+    `;
+    document.head.appendChild(style);
+
+    document.body.appendChild(modal);
+
+    // Show the modal
+    setTimeout(() => {
+        modal.classList.add('active');
+    }, 10);
+
+    // Add event listeners
+    const closeButton = modal.querySelector('.modal-close');
+    const cancelButton = modal.querySelector('#cancel-upload');
+    const urlInput = modal.querySelector('#item-url');
+    const nameInput = modal.querySelector('#item-name');
+    const uploadButton = modal.querySelector('#upload-button');
+    const imagePreview = modal.querySelector('#image-preview');
+
+    // Close modal function
+    const closeModal = () => {
+        modal.classList.remove('active');
+        setTimeout(() => {
+            modal.remove();
+            document.head.removeChild(style);
+        }, 300);
+    };
+
+    // Close button event
+    closeButton.addEventListener('click', closeModal);
+    cancelButton.addEventListener('click', closeModal);
+
+    // URL input change event
+    urlInput.addEventListener('input', () => {
+        const url = urlInput.value.trim();
+        if (url && isValidImageUrl(url)) {
+            // Show preview
+            imagePreview.src = url;
+            imagePreview.style.display = 'block';
+            imagePreview.onerror = () => {
+                imagePreview.style.display = 'none';
+                uploadButton.disabled = true;
+            };
+            imagePreview.onload = () => {
+                // Enable upload button if name is also entered
+                uploadButton.disabled = !nameInput.value.trim();
+            };
+        } else {
+            imagePreview.style.display = 'none';
+            uploadButton.disabled = true;
+        }
+    });
+
+    // Name input change event
+    nameInput.addEventListener('input', () => {
+        // Enable upload button if both name and valid URL are entered
+        const url = urlInput.value.trim();
+        uploadButton.disabled = !(nameInput.value.trim() && url && isValidImageUrl(url) && imagePreview.complete && imagePreview.naturalWidth);
+    });
+
+    // Upload button event
+    uploadButton.addEventListener('click', async () => {
+        const name = nameInput.value.trim();
+        const imageUrl = urlInput.value.trim();
+
+        if (!name || !imageUrl) {
+            showError('Please enter both a name and image URL.');
+            return;
+        }
+
+        uploadButton.textContent = 'Adding...';
+        uploadButton.disabled = true;
+
+        try {
+            // Send the image URL to the server
+            await postWebViewMessage({
+                type: 'imageUploaded',
+                data: {
+                    imageUrl,
+                    itemType,
+                    itemName: name
+                }
+            });
+
+            // Close the modal
+            closeModal();
+
+            // Show success message
+            showAward('gold', `Custom ${itemTypeDisplay} added successfully!`);
+
+            // Request updated custom items
+            requestCustomWeapons();
+        } catch (error) {
+            console.error('Error adding custom item:', error);
+            uploadButton.textContent = 'Add';
+            uploadButton.disabled = false;
+            showError('Failed to add custom item. Please try again.');
+        }
+    });
+}
+
+// Function to validate image URL
+function isValidImageUrl(url) {
+    return url.match(/\.(jpeg|jpg|gif|png)$/i) !== null;
+}
+
+// Show image upload dialog (legacy function, kept for compatibility)
+function showImageUploadDialog(uploadUrl, itemType) {
+    // Create modal for image upload
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.id = 'upload-modal';
+
+    modal.innerHTML = `
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Upload Custom ${itemType === 'weapon' ? 'Paddle' : 'Ball'}</h2>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="upload-form">
+                    <div class="form-group">
+                        <label for="item-name">Name your ${itemType}:</label>
+                        <input type="text" id="item-name" placeholder="Enter a name" maxlength="20">
+                    </div>
+                    <div class="form-group">
+                        <label for="item-image">Select an image:</label>
+                        <input type="file" id="item-image" accept="image/png,image/jpeg">
+                    </div>
+                    <div class="preview-container">
+                        <img id="image-preview" style="display: none; max-width: 100%; max-height: 200px;">
+                    </div>
+                    <div class="upload-actions">
+                        <button id="upload-button" class="primary-button" disabled>Upload</button>
+                        <button id="cancel-upload" class="secondary-button">Cancel</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    // Show the modal
+    setTimeout(() => {
+        modal.classList.add('active');
+    }, 10);
+
+    // Add event listeners
+    const closeButton = modal.querySelector('.modal-close');
+    const cancelButton = modal.querySelector('#cancel-upload');
+    const fileInput = modal.querySelector('#item-image');
+    const nameInput = modal.querySelector('#item-name');
+    const uploadButton = modal.querySelector('#upload-button');
+    const imagePreview = modal.querySelector('#image-preview');
+
+    // Close modal function
+    const closeModal = () => {
+        modal.classList.remove('active');
+        setTimeout(() => {
+            modal.remove();
+        }, 300);
+    };
+
+    // Close button event
+    closeButton.addEventListener('click', closeModal);
+    cancelButton.addEventListener('click', closeModal);
+
+    // File input change event
+    fileInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            // Show preview
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                imagePreview.src = e.target.result;
+                imagePreview.style.display = 'block';
+            };
+            reader.readAsDataURL(file);
+
+            // Enable upload button if name is also entered
+            if (nameInput.value.trim()) {
+                uploadButton.disabled = false;
+            }
+        } else {
+            imagePreview.style.display = 'none';
+            uploadButton.disabled = true;
+        }
+    });
+
+    // Name input change event
+    nameInput.addEventListener('input', () => {
+        // Enable upload button if file is also selected
+        if (fileInput.files.length > 0 && nameInput.value.trim()) {
+            uploadButton.disabled = false;
+        } else {
+            uploadButton.disabled = true;
+        }
+    });
+
+    // Upload button click event
+    uploadButton.addEventListener('click', async () => {
+        const file = fileInput.files[0];
+        const name = nameInput.value.trim();
+
+        if (!file || !name) {
+            return;
+        }
+
+        // Show loading state
+        uploadButton.disabled = true;
+        uploadButton.textContent = 'Uploading...';
+
+        try {
+            // Upload the file to the provided URL
+            const formData = new FormData();
+            formData.append('file', file);
+
+            const response = await fetch(uploadUrl, {
+                method: 'POST',
+                body: formData
+            });
+
+            if (!response.ok) {
+                throw new Error('Upload failed');
+            }
+
+            const data = await response.json();
+
+            // Notify Devvit that the image was uploaded
+            await postWebViewMessage({
+                type: 'imageUploaded',
+                data: {
+                    imageUrl: data.url,
+                    itemType,
+                    itemName: name
+                }
+            });
+
+            // Close the modal
+            closeModal();
+
+            // Show success message
+            showAward('gold', `Custom ${itemType} uploaded successfully!`);
+
+            // Request updated custom weapons
+            requestCustomWeapons();
+
+        } catch (error) {
+            console.error('Error uploading image:', error);
+            uploadButton.textContent = 'Upload';
+            uploadButton.disabled = false;
+            showError('Failed to upload image. Please try again.');
+        }
+    });
+}
+
+// Add custom weapons to the paddle selection
 function populatePaddleSelection() {
     const paddleContainer = document.getElementById('paddle-selection');
-    
+
     if (!paddleContainer) {
         console.error('Paddle selection container not found');
         return;
     }
-    
+
     // Clear existing content
     paddleContainer.innerHTML = '';
-    
-    // Populate paddles
+
+    // Add "Create Custom Paddle" button at the top
+    const createCustomButton = document.createElement('div');
+    createCustomButton.className = 'create-custom-weapon';
+    createCustomButton.innerHTML = `
+        <div class="create-custom-content">
+            <div class="create-icon">+</div>
+            <h3>Create Custom Paddle</h3>
+            <p>Upload your own paddle image</p>
+        </div>
+    `;
+
+    createCustomButton.addEventListener('click', () => {
+        // Create and trigger a hidden file input
+        const fileInput = document.createElement('input');
+        fileInput.type = 'file';
+        fileInput.accept = 'image/png, image/jpeg, image/gif';
+        fileInput.style.display = 'none';
+        document.body.appendChild(fileInput);
+        
+        // Trigger the file dialog
+        fileInput.click();
+        
+        // Handle file selection
+        fileInput.addEventListener('change', (e) => {
+            if (fileInput.files && fileInput.files[0]) {
+                const file = fileInput.files[0];
+                
+                // Create upload modal
+                const modal = document.createElement('div');
+                modal.className = 'modal';
+                modal.innerHTML = `
+                    <div class="modal-content custom-item-modal">
+                        <div class="modal-header">
+                            <h2>Create Custom Paddle</h2>
+                            <button class="modal-close">&times;</button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="upload-form">
+                                <div class="form-group">
+                                    <label for="paddle-name">Name your paddle:</label>
+                                    <input type="text" id="paddle-name" placeholder="My Custom Paddle" maxlength="20" class="custom-input">
+                                </div>
+                                <div class="preview-container">
+                                    <img id="paddle-preview" src="" alt="Preview" style="max-width: 100%; max-height: 200px; border-radius: 8px; margin-top: 10px;">
+                                </div>
+                                <div class="upload-actions">
+                                    <button id="confirm-upload" class="primary-button">Create Paddle</button>
+                                    <button id="cancel-upload" class="secondary-button">Cancel</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                document.body.appendChild(modal);
+                
+                // Show the modal
+                setTimeout(() => modal.classList.add('active'), 10);
+                
+                // Setup preview
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    const paddlePreview = document.getElementById('paddle-preview');
+                    paddlePreview.src = event.target.result;
+                };
+                reader.readAsDataURL(file);
+                
+                // Modal close button
+                const closeBtn = modal.querySelector('.modal-close');
+                const cancelBtn = modal.querySelector('#cancel-upload');
+                
+                const closeModal = () => {
+                    modal.classList.remove('active');
+                    setTimeout(() => modal.remove(), 300);
+                    document.body.removeChild(fileInput);
+                };
+                
+                closeBtn.addEventListener('click', closeModal);
+                cancelBtn.addEventListener('click', closeModal);
+                
+                // Confirm upload
+                const confirmBtn = modal.querySelector('#confirm-upload');
+                confirmBtn.addEventListener('click', () => {
+                    const paddleName = document.getElementById('paddle-name').value.trim() || 'Custom Paddle';
+                    
+                    // Convert the file to a data URL for upload
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                        const imageData = event.target.result;
+                        
+                        // Show loading state
+                        confirmBtn.disabled = true;
+                        confirmBtn.textContent = 'Creating...';
+                        
+                        // Send to server
+                        postWebViewMessage({
+                            type: 'imageUploaded',
+                            data: {
+                                imageUrl: imageData,
+                                itemType: 'weapon',
+                                itemName: paddleName
+                            }
+                        }).then(() => {
+                            // Show success and close modal
+                            showAward('gold', 'Custom paddle created successfully!');
+                            closeModal();
+                            
+                            // Request updated custom weapons
+                            requestCustomWeapons();
+                        }).catch(error => {
+                            console.error('Error uploading image:', error);
+                            confirmBtn.disabled = false;
+                            confirmBtn.textContent = 'Create Paddle';
+                            showError('Failed to create custom paddle. Please try again.');
+                        });
+                    };
+                    reader.readAsDataURL(file);
+                });
+            }
+            
+            // Clean up the input element if no file was selected
+            if (!fileInput.files || !fileInput.files[0]) {
+                document.body.removeChild(fileInput);
+            }
+        });
+    });
+
+    paddleContainer.appendChild(createCustomButton);
+
+    // Populate custom paddles if available
+    if (customWeapons && customWeapons.length > 0) {
+        const customSection = document.createElement('div');
+        customSection.className = 'weapon-section';
+        customSection.innerHTML = '<h3 class="section-title">Your Custom Paddles</h3>';
+        paddleContainer.appendChild(customSection);
+
+        customWeapons.forEach(customPaddle => {
+            // Create a paddle object compatible with the game
+            const paddleObj = {
+                name: customPaddle.name,
+                image: customPaddle.imageUrl,
+                bounceHeight: 1.0,
+                speedMultiplier: 1.0,
+                unlockScore: 0,
+                isCustom: true
+            };
+
+            const isSelected = selectedPaddle && selectedPaddle.isCustom &&
+                selectedPaddle.image === paddleObj.image;
+
+            const paddleElement = document.createElement('div');
+            paddleElement.className = `weapon-item unlocked ${isSelected ? 'selected' : ''}`;
+            paddleElement.innerHTML = `
+                <img src="${paddleObj.image}" alt="${paddleObj.name}">
+                <div class="weapon-info">
+                    <h3>${paddleObj.name}</h3>
+                    <p>Custom Paddle</p>
+                    <div class="weapon-stats">
+                        <span>Bounce: 1.0x</span>
+                        <span>Speed: 1.0x</span>
+                    </div>
+                </div>
+            `;
+
+            paddleElement.addEventListener('click', () => selectPaddle(paddleObj));
+            paddleContainer.appendChild(paddleElement);
+        });
+    }
+
+    // Add a separator
+    const separator = document.createElement('div');
+    separator.className = 'weapon-separator';
+    paddleContainer.appendChild(separator);
+
+    // Add standard section title
+    const standardSection = document.createElement('div');
+    standardSection.className = 'weapon-section';
+    standardSection.innerHTML = '<h3 class="section-title">Standard Paddles</h3>';
+    paddleContainer.appendChild(standardSection);
+
+    // Populate standard paddles
     Object.entries(weapons.paddles).forEach(([key, paddle]) => {
         const isUnlocked = highScore >= paddle.unlockScore;
         const isSelected = selectedPaddle === paddle;
-        
+
         const paddleElement = document.createElement('div');
         paddleElement.className = `weapon-item ${isUnlocked ? 'unlocked' : 'locked'} ${isSelected ? 'selected' : ''}`;
         paddleElement.innerHTML = `
@@ -2073,34 +2889,265 @@ function populatePaddleSelection() {
                 </div>
             </div>
         `;
-        
+
         // Add tooltip
         paddleElement.appendChild(createWeaponTooltip(paddle));
-        
+
         if (isUnlocked) {
             paddleElement.addEventListener('click', () => selectPaddle(paddle));
         }
-        
+
         paddleContainer.appendChild(paddleElement);
     });
 }
 
 function populateBallSelection() {
     const ballContainer = document.getElementById('ball-selection');
-    
+
     if (!ballContainer) {
         console.error('Ball selection container not found');
         return;
     }
-    
+
     // Clear existing content
     ballContainer.innerHTML = '';
-    
-    // Populate balls
+
+    // Add "Create Custom Ball" button at the top
+    const createCustomButton = document.createElement('div');
+    createCustomButton.className = 'create-custom-weapon';
+    createCustomButton.innerHTML = `
+        <div class="create-custom-content">
+            <div class="create-icon">+</div>
+            <h3>Create Custom Ball</h3>
+            <p>Upload your own ball image</p>
+        </div>
+    `;
+
+    createCustomButton.addEventListener('click', () => {
+        // Create and trigger a hidden file input
+        const fileInput = document.createElement('input');
+        fileInput.type = 'file';
+        fileInput.accept = 'image/png, image/jpeg, image/gif';
+        fileInput.style.display = 'none';
+        document.body.appendChild(fileInput);
+        
+        // Trigger the file dialog
+        fileInput.click();
+        
+        // Handle file selection
+        fileInput.addEventListener('change', (e) => {
+            if (fileInput.files && fileInput.files[0]) {
+                const file = fileInput.files[0];
+                
+                // Create upload modal
+                const modal = document.createElement('div');
+                modal.className = 'modal';
+                modal.innerHTML = `
+                    <div class="modal-content custom-item-modal">
+                        <div class="modal-header">
+                            <h2>Create Custom Ball</h2>
+                            <button class="modal-close">&times;</button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="upload-form">
+                                <div class="form-group">
+                                    <label for="ball-name">Name your ball:</label>
+                                    <input type="text" id="ball-name" placeholder="My Custom Ball" maxlength="20" class="custom-input">
+                                </div>
+                                <div class="preview-container">
+                                    <img id="ball-preview" src="" alt="Preview" style="max-width: 100%; max-height: 200px; border-radius: 8px; margin-top: 10px;">
+                                </div>
+                                <div class="upload-actions">
+                                    <button id="confirm-upload" class="primary-button">Create Ball</button>
+                                    <button id="cancel-upload" class="secondary-button">Cancel</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                document.body.appendChild(modal);
+                
+                // Show the modal
+                setTimeout(() => modal.classList.add('active'), 10);
+                
+                // Setup preview
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    const ballPreview = document.getElementById('ball-preview');
+                    ballPreview.src = event.target.result;
+                };
+                reader.readAsDataURL(file);
+                
+                // Modal close button
+                const closeBtn = modal.querySelector('.modal-close');
+                const cancelBtn = modal.querySelector('#cancel-upload');
+                
+                const closeModal = () => {
+                    modal.classList.remove('active');
+                    setTimeout(() => modal.remove(), 300);
+                    document.body.removeChild(fileInput);
+                };
+                
+                closeBtn.addEventListener('click', closeModal);
+                cancelBtn.addEventListener('click', closeModal);
+                
+                // Confirm upload
+                const confirmBtn = modal.querySelector('#confirm-upload');
+                confirmBtn.addEventListener('click', () => {
+                    const ballName = document.getElementById('ball-name').value.trim() || 'Custom Ball';
+                    
+                    // Convert the file to a data URL for upload
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                        const imageData = event.target.result;
+                        
+                        // Show loading state
+                        confirmBtn.disabled = true;
+                        confirmBtn.textContent = 'Creating...';
+                        
+                        // Send to server
+                        postWebViewMessage({
+                            type: 'imageUploaded',
+                            data: {
+                                imageUrl: imageData,
+                                itemType: 'ball',
+                                itemName: ballName
+                            }
+                        }).then(() => {
+                            // Show success and close modal
+                            showAward('gold', 'Custom ball created successfully!');
+                            closeModal();
+                            
+                            // Request updated custom weapons
+                            requestCustomWeapons();
+                        }).catch(error => {
+                            console.error('Error uploading image:', error);
+                            confirmBtn.disabled = false;
+                            confirmBtn.textContent = 'Create Ball';
+                            showError('Failed to create custom ball. Please try again.');
+                        });
+                    };
+                    reader.readAsDataURL(file);
+                });
+            }
+            
+            // Clean up the input element if no file was selected
+            if (!fileInput.files || !fileInput.files[0]) {
+                document.body.removeChild(fileInput);
+            }
+        });
+    });
+
+    ballContainer.appendChild(createCustomButton);
+
+    // Populate custom balls if available
+    if (customBalls && customBalls.length > 0) {
+        const customSection = document.createElement('div');
+        customSection.className = 'weapon-section';
+        customSection.innerHTML = '<h3 class="section-title">Your Custom Balls</h3>';
+        ballContainer.appendChild(customSection);
+
+        customBalls.forEach(customBall => {
+            // Create a ball object compatible with the game
+            const ballObj = {
+                name: customBall.name,
+                image: customBall.imageUrl,
+                bounceMultiplier: 1.0,
+                gravity: 1.0,
+                unlockScore: 0,
+                isCustom: true
+            };
+
+            const isSelected = selectedBall && selectedBall.isCustom &&
+                selectedBall.image === ballObj.image;
+
+            const ballElement = document.createElement('div');
+            ballElement.className = `weapon-item unlocked ${isSelected ? 'selected' : ''}`;
+            ballElement.innerHTML = `
+                <img src="${ballObj.image}" alt="${ballObj.name}" class="ball-image">
+                <div class="weapon-info">
+                    <h3>${ballObj.name}</h3>
+                    <p>Custom Ball</p>
+                    <div class="weapon-stats">
+                        <span>Bounce: 1.0x</span>
+                        <span>Gravity: 1.0x</span>
+                    </div>
+                </div>
+            `;
+
+            ballElement.addEventListener('click', () => selectBall(ballObj));
+            ballContainer.appendChild(ballElement);
+        });
+    }
+
+    // Add a separator for balls
+    const ballSeparator = document.createElement('div');
+    ballSeparator.className = 'weapon-separator';
+    ballContainer.appendChild(ballSeparator);
+
+    // Add standard section title for balls
+    const ballStandardSection = document.createElement('div');
+    ballStandardSection.className = 'weapon-section';
+    ballStandardSection.innerHTML = '<h3 class="section-title">Standard Balls</h3>';
+    ballContainer.appendChild(ballStandardSection);
+
+    // Populate custom balls if available
+    if (customBalls && customBalls.length > 0) {
+        const customSection = document.createElement('div');
+        customSection.className = 'weapon-section';
+        customSection.innerHTML = '<h3 class="section-title">Your Custom Balls</h3>';
+        ballContainer.appendChild(customSection);
+
+        customBalls.forEach(customBall => {
+            // Create a ball object compatible with the game
+            const ballObj = {
+                name: customBall.name,
+                image: customBall.imageUrl,
+                speedMultiplier: 1.0,
+                bounceMultiplier: 1.0,
+                unlockScore: 0,
+                isCustom: true
+            };
+
+            const isSelected = selectedBall && selectedBall.isCustom &&
+                selectedBall.image === ballObj.image;
+
+            const ballElement = document.createElement('div');
+            ballElement.className = `weapon-item unlocked ${isSelected ? 'selected' : ''}`;
+            ballElement.innerHTML = `
+                <img src="${ballObj.image}" alt="${ballObj.name}">
+                <div class="weapon-info">
+                    <h3>${ballObj.name}</h3>
+                    <p>Custom Ball</p>
+                    <div class="weapon-stats">
+                        <span>Speed: 1.0x</span>
+                        <span>Bounce: 1.0x</span>
+                    </div>
+                </div>
+            `;
+
+            ballElement.addEventListener('click', () => selectBall(ballObj));
+            ballContainer.appendChild(ballElement);
+        });
+    }
+
+    // Add a separator
+    const separator = document.createElement('div');
+    separator.className = 'weapon-separator';
+    ballContainer.appendChild(separator);
+
+    // Add standard section title
+    const standardSection = document.createElement('div');
+    standardSection.className = 'weapon-section';
+    standardSection.innerHTML = '<h3 class="section-title">Standard Balls</h3>';
+    ballContainer.appendChild(standardSection);
+
+    // Populate standard balls
     Object.entries(weapons.balls).forEach(([key, ball]) => {
         const isUnlocked = highScore >= ball.unlockScore;
         const isSelected = selectedBall === ball;
-        
+
         const ballElement = document.createElement('div');
         ballElement.className = `weapon-item ${isUnlocked ? 'unlocked' : 'locked'} ${isSelected ? 'selected' : ''}`;
         ballElement.innerHTML = `
@@ -2114,14 +3161,14 @@ function populateBallSelection() {
                 </div>
             </div>
         `;
-        
+
         // Add tooltip
         ballElement.appendChild(createWeaponTooltip(ball));
-        
+
         if (isUnlocked) {
             ballElement.addEventListener('click', () => selectBall(ball));
         }
-        
+
         ballContainer.appendChild(ballElement);
     });
 }
@@ -2131,7 +3178,7 @@ function showBallSelection() {
     document.querySelectorAll('.screen').forEach(screen => {
         screen.classList.remove('active');
     });
-    
+
     // Show ball selection screen
     const ballScreen = document.getElementById('ball-selection-screen');
     if (ballScreen) {
@@ -2179,7 +3226,7 @@ function createComboDisplay() {
     if (existingCombo) {
         existingCombo.remove();
     }
-    
+
     // Create a new combo display
     const comboDisplay = document.createElement('div');
     comboDisplay.className = 'combo-display';
@@ -2188,7 +3235,7 @@ function createComboDisplay() {
         <div class="combo-multiplier">x<span class="multiplier-value">1</span></div>
     `;
     gameArea.appendChild(comboDisplay);
-    
+
     // Initially hide it
     comboDisplay.style.opacity = '0';
 }
@@ -2197,17 +3244,17 @@ function createComboDisplay() {
 function updateComboDisplay() {
     const comboDisplay = document.querySelector('.combo-display');
     if (!comboDisplay) return;
-    
+
     const comboCount = comboDisplay.querySelector('.combo-count');
     const multiplierValue = comboDisplay.querySelector('.multiplier-value');
-    
+
     comboCount.textContent = consecutiveHits;
     multiplierValue.textContent = scoreMultiplier;
-    
+
     // Show the combo display when there's a combo active
     if (consecutiveHits > 0) {
         comboDisplay.style.opacity = '1';
-        
+
         // Add pulse animation on update
         comboDisplay.classList.remove('pulse');
         void comboDisplay.offsetWidth; // Trigger reflow
@@ -2222,10 +3269,10 @@ function showComboText(text) {
     const comboText = document.createElement('div');
     comboText.className = 'combo-text';
     comboText.textContent = text;
-    comboText.style.left = (ballX + BALL_SIZE/2) + 'px';
+    comboText.style.left = (ballX + BALL_SIZE / 2) + 'px';
     comboText.style.top = (ballY - 40) + 'px';
     gameArea.appendChild(comboText);
-    
+
     // Remove after animation
     setTimeout(() => comboText.remove(), 1500);
 }
@@ -2237,7 +3284,7 @@ function createScorePopup(x, y, text) {
     popup.textContent = text;
     popup.style.left = x + 'px';
     popup.style.top = y + 'px';
-    
+
     // Add color based on score value
     if (text.includes('5x')) {
         popup.style.color = '#ff5722';
@@ -2252,9 +3299,9 @@ function createScorePopup(x, y, text) {
         popup.style.color = '#3f51b5';
         popup.style.fontSize = '20px';
     }
-    
+
     gameArea.appendChild(popup);
-    
+
     // Remove after animation
     setTimeout(() => popup.remove(), 1000);
 }
@@ -2262,19 +3309,19 @@ function createScorePopup(x, y, text) {
 // Preload all weapon images to avoid loading delays during gameplay
 function preloadWeaponImages() {
     console.log("Preloading weapon images");
-    
+
     const imagesToPreload = [];
-    
+
     // Add all paddle images
     Object.values(weapons.paddles).forEach(paddle => {
         imagesToPreload.push(paddle.image);
     });
-    
+
     // Add all ball images
     Object.values(weapons.balls).forEach(ball => {
         imagesToPreload.push(ball.image);
     });
-    
+
     // Create image objects to force loading
     imagesToPreload.forEach(src => {
         const img = new Image();
@@ -2286,7 +3333,7 @@ function preloadWeaponImages() {
 // Call preloading on page load
 window.addEventListener('DOMContentLoaded', () => {
     preloadWeaponImages();
-    
+
     // ... rest of your DOMContentLoaded code ...
     // ... existing code ...
 });
@@ -2298,7 +3345,7 @@ function forceApplyWeaponStyles() {
         paddleCursor.style.backgroundImage = `url('${paddleImgUrl}')`;
         console.log("Force applied paddle style:", paddleImgUrl);
     }
-    
+
     if (ball) {
         const ballImgUrl = selectedBall.image;
         ball.style.backgroundImage = `url('${ballImgUrl}')`;
@@ -2328,29 +3375,29 @@ function initGame() {
     paddleCursor = document.createElement('div');
     paddleCursor.className = 'paddle-cursor';
     gameArea.appendChild(paddleCursor);
-    
+
     console.log("Applying selected weapons:");
     console.log("Paddle:", selectedPaddle.name, selectedPaddle.image);
     console.log("Ball:", selectedBall.name, selectedBall.image);
-    
+
     // Apply selected weapons with proper styling
     paddleCursor.style.backgroundImage = `url('${selectedPaddle.image}')`;
     ball.style.backgroundImage = `url('${selectedBall.image}')`;
-    
+
     // For debugging - log the applied styles
     console.log("Applied styles:", {
         paddleBackground: paddleCursor.style.backgroundImage,
         ballBackground: ball.style.backgroundImage
     });
-    
+
     // Set initial ball position and dimensions
     ball.style.width = BALL_SIZE + 'px';
     ball.style.height = BALL_SIZE + 'px';
     ball.style.visibility = 'visible';
-    
+
     // Force weapon styles again after a brief delay to ensure they're applied
     setTimeout(() => forceApplyWeaponStyles(), 100);
-    
+
     // Hide default cursor when over game area
     gameArea.style.cursor = 'none';
 
@@ -2359,7 +3406,7 @@ function initGame() {
     gameArea.removeEventListener('touchmove', handleTouchMove);
     gameArea.removeEventListener('mousedown', startGame);
     gameArea.removeEventListener('touchstart', startGame);
-    
+
     // Add event listeners
     gameArea.addEventListener('mousemove', handleMouseMove);
     gameArea.addEventListener('touchmove', handleTouchMove, { passive: false });
@@ -2368,16 +3415,16 @@ function initGame() {
 
     // Position paddle and ball initially
     resetBall();
-    
+
     // Reset game state
     gameStarted = false;
     currentScore = 0;
     document.getElementById('score').textContent = '0';
     resetMultiplier();
-    
+
     // Add combo display if not already present
     createComboDisplay();
-    
+
     // Update high score display
     document.getElementById('highScore').textContent = highScore;
 
@@ -2388,7 +3435,7 @@ function initGame() {
 
     // Start game loop
     animationFrameId = requestAnimationFrame(gameLoop);
-    
+
     // Show instruction message
     if (instructions) {
         // Use the authenticated Reddit username in the instructions
@@ -2410,78 +3457,78 @@ function initGame() {
         }
         instructions.style.display = 'block';
     }
-    
+
     console.log("Game initialized successfully");
 }
 
 // Add the preloading call to the DOMContentLoaded event which is at the bottom of the file
 // Main initialization when DOM content is loaded
-document.addEventListener('DOMContentLoaded', function() {
-  // Preload all weapon images first
-  preloadWeaponImages();
-  
-  // Set up network status event listeners
-  window.addEventListener('offline', handleOffline);
-  window.addEventListener('online', handleOnline);
+document.addEventListener('DOMContentLoaded', function () {
+    // Preload all weapon images first
+    preloadWeaponImages();
 
-  // Retry if the browser is actually offline at startup
-  if (!navigator.onLine) {
-    handleOffline();
-  } else {
-    // Post a message to Devvit to get the leaderboard data
-    postWebViewMessage({ type: 'webViewReady' }).catch(() => {
-      console.error("Failed to send initial webViewReady message");
-      showError("Failed to connect to Reddit servers. Please try again.", ErrorState.CONNECTION_ERROR);
-    });
-  }
-  
-  // Set up back buttons for navigation
-  const backFromLeaderboardBtn = document.getElementById('back-from-leaderboard-btn');
-  if (backFromLeaderboardBtn) {
-    backFromLeaderboardBtn.addEventListener('click', function() {
-      // Hide leaderboard screen
-      document.getElementById('leaderboard-screen').classList.remove('active');
-      
-      // Show menu screen
-      const menuScreen = document.getElementById('menu-screen');
-      if (menuScreen) {
-        menuScreen.classList.add('active');
-      }
-    });
-  }
-  
-  // Set up weapon selection back button
-  const backFromWeaponsBtn = document.getElementById('back-from-weapons-btn');
-  if (backFromWeaponsBtn) {
-    backFromWeaponsBtn.addEventListener('click', function() {
-      // Hide weapons screen
-      document.getElementById('weapon-selection-screen').classList.remove('active');
-      
-      // Show menu screen
-      const menuScreen = document.getElementById('menu-screen');
-      if (menuScreen) {
-        menuScreen.classList.add('active');
-      }
-    });
-  }
+    // Set up network status event listeners
+    window.addEventListener('offline', handleOffline);
+    window.addEventListener('online', handleOnline);
 
-  if (startGameWithWeaponsBtn) {
-    startGameWithWeaponsBtn.addEventListener('click', startGameWithWeapons);
-  }
-  
-  const backFromBadgesBtn = document.getElementById('back-from-badges-btn');
-  if (backFromBadgesBtn) {
-    backFromBadgesBtn.addEventListener('click', function() {
-      // Hide badges screen
-      document.getElementById('badges-screen').classList.remove('active');
-      
-      // Show menu screen
-      const menuScreen = document.getElementById('menu-screen');
-      if (menuScreen) {
-        menuScreen.classList.add('active');
-      }
-    });
-  }
+    // Retry if the browser is actually offline at startup
+    if (!navigator.onLine) {
+        handleOffline();
+    } else {
+        // Post a message to Devvit to get the leaderboard data
+        postWebViewMessage({ type: 'webViewReady' }).catch(() => {
+            console.error("Failed to send initial webViewReady message");
+            showError("Failed to connect to Reddit servers. Please try again.", ErrorState.CONNECTION_ERROR);
+        });
+    }
+
+    // Set up back buttons for navigation
+    const backFromLeaderboardBtn = document.getElementById('back-from-leaderboard-btn');
+    if (backFromLeaderboardBtn) {
+        backFromLeaderboardBtn.addEventListener('click', function () {
+            // Hide leaderboard screen
+            document.getElementById('leaderboard-screen').classList.remove('active');
+
+            // Show menu screen
+            const menuScreen = document.getElementById('menu-screen');
+            if (menuScreen) {
+                menuScreen.classList.add('active');
+            }
+        });
+    }
+
+    // Set up weapon selection back button
+    const backFromWeaponsBtn = document.getElementById('back-from-weapons-btn');
+    if (backFromWeaponsBtn) {
+        backFromWeaponsBtn.addEventListener('click', function () {
+            // Hide weapons screen
+            document.getElementById('weapon-selection-screen').classList.remove('active');
+
+            // Show menu screen
+            const menuScreen = document.getElementById('menu-screen');
+            if (menuScreen) {
+                menuScreen.classList.add('active');
+            }
+        });
+    }
+
+    if (startGameWithWeaponsBtn) {
+        startGameWithWeaponsBtn.addEventListener('click', startGameWithWeapons);
+    }
+
+    const backFromBadgesBtn = document.getElementById('back-from-badges-btn');
+    if (backFromBadgesBtn) {
+        backFromBadgesBtn.addEventListener('click', function () {
+            // Hide badges screen
+            document.getElementById('badges-screen').classList.remove('active');
+
+            // Show menu screen
+            const menuScreen = document.getElementById('menu-screen');
+            if (menuScreen) {
+                menuScreen.classList.add('active');
+            }
+        });
+    }
 });
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -2538,7 +3585,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('paddle-selection-screen').classList.add('active');
         populatePaddleSelection();
     });
-    
+
     leaderboardBtn?.addEventListener('click', showLeaderboard);
     badgesBtn?.addEventListener('click', showBadges);
     weaponsBtn?.addEventListener('click', showWeapons);
@@ -2578,13 +3625,13 @@ function setupLeaderboardTabs() {
             // Update active tab
             tabButtons.forEach(btn => btn.classList.remove('active'));
             button.classList.add('active');
-            
+
             // Show corresponding content
             const tabId = button.getAttribute('data-tab');
             document.querySelectorAll('.tab-content').forEach(content => {
                 content.classList.toggle('active', content.id === `${tabId}-leaderboard`);
             });
-            
+
             // Fetch data for this tab
             refreshLeaderboard();
         });
@@ -2693,7 +3740,7 @@ document.addEventListener('DOMContentLoaded', () => {
     gameArea = document.getElementById('gameArea');
     ball = document.getElementById('ball');
     instructions = document.getElementById('instructions');
-    
+
     // Set default weapons if not already set
     if (!selectedPaddle) selectedPaddle = weapons.paddles.default;
     if (!selectedBall) selectedBall = weapons.balls.default;
@@ -2704,7 +3751,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const badgesBtn = document.getElementById('badges-btn');
     const weaponsBtn = document.getElementById('weapons-btn');
     const howToPlayBtn = document.getElementById('how-to-play-btn');
-    
+
     function hideAllScreens() {
         document.querySelectorAll('.screen').forEach(screen => {
             screen.classList.remove('active');
@@ -2732,20 +3779,83 @@ document.addEventListener('DOMContentLoaded', () => {
 document.addEventListener('DOMContentLoaded', () => {
     const urlParams = new URLSearchParams(window.location.search);
     const dataParam = urlParams.get('data');
-    
+
     if (dataParam) {
-      const data = JSON.parse(decodeURIComponent(dataParam));
-      
-      if (window.location.pathname.includes('leaderboard.html')) {
-        renderLeaderboard(data);
-      } else if (window.location.pathname.includes('top-player.html')) {
-        renderTopPlayer(data);
-      }
+        const data = JSON.parse(decodeURIComponent(dataParam));
+
+        if (window.location.pathname.includes('leaderboard.html')) {
+            renderLeaderboard(data);
+        } else if (window.location.pathname.includes('top-player.html')) {
+            renderTopPlayer(data);
+        }
     }
-    
+
     const dateElement = document.getElementById('current-date');
     if (dateElement) {
-      const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-      dateElement.textContent = new Date().toLocaleDateString(undefined, options);
+        const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+        dateElement.textContent = new Date().toLocaleDateString(undefined, options);
     }
-  });
+});
+
+// Add these functions after the gameOver function
+function checkTopPlayerAchievement(score) {
+    if (leaderboard.length === 0) return false;
+
+    // Find player's position in leaderboard
+    const position = leaderboard.findIndex(entry => entry.score < score);
+
+    // Check if score is in top 5
+    if (position !== -1 && position < 5) {
+        const newRank = position + 1;
+        scheduleTopPlayerPost({
+            username: currentUsername,
+            score: score,
+            rank: newRank,
+            timestamp: new Date().toISOString()
+        });
+        return true;
+    }
+    return false;
+}
+
+function scheduleTopPlayerPost(playerData) {
+    postWebViewMessage({
+        type: 'schedulePost',
+        data: {
+            template: 'top-player.html',
+            data: playerData,
+            scheduledTime: new Date(Date.now() + 5 * 60000).toISOString(), // Schedule 5 minutes after achievement
+            title: `🎯 New Top 5 Achievement by ${playerData.username}!`
+        }
+    });
+}
+
+function scheduleWeeklyLeaderboard() {
+    const now = new Date();
+    const nextSunday = new Date();
+    nextSunday.setDate(now.getDate() + (7 - now.getDay()));
+    nextSunday.setHours(0, 0, 0, 0);
+
+    const topPlayer = leaderboard[0] || null;
+
+    postWebViewMessage({
+        type: 'schedulePost',
+        data: {
+            template: 'leaderboard.html',
+            data: leaderboard.slice(0, 10), // Top 10 players
+            topPlayer: topPlayer, // Include top player details
+            scheduledTime: nextSunday.toISOString(),
+            title: '🏆 Weekly Don\'t Drop Leaderboard'
+        }
+    });
+}
+
+// Add weekly leaderboard scheduling on init
+document.addEventListener('DOMContentLoaded', () => {
+    // ...existing initialization code...
+
+    // Schedule weekly leaderboard post
+    scheduleWeeklyLeaderboard();
+
+    // ...rest of existing initialization code...
+});

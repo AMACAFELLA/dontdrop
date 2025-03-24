@@ -24,6 +24,29 @@ export type DevvitMessagePayload = {
     message: string;
     details?: string;
   };
+} | {
+  type: 'customItemsData';
+  data: {
+    weapon?: CustomItemData[];
+    ball?: CustomItemData[];
+  };
+} | {
+  type: 'uploadComplete';
+  data: {
+    imageUrl: string;
+    itemType: 'weapon' | 'ball' | 'ball';
+    itemName: string;
+  };
+} | {
+  type: 'requestImageUrl';  // Added this new message type
+  data: {
+    itemType: 'weapon' | 'ball' | 'ball';
+  };
+} | {
+  type: 'requestImageUrl';
+  data: {
+    itemType: 'weapon' | 'ball';
+  };
 };
 
 export type DevvitMessage = {
@@ -42,6 +65,30 @@ export type WebViewMessage = {
 } | {
   type: 'getLeaderboard';
   data?: { existingLeaderboard?: LeaderboardEntry[] };
+} | {
+  type: 'requestCustomItems';
+} | {
+  type: 'fetchCustomWeapons'; // Add this new message type
+} | {
+  type: 'requestImageUpload';
+  data: { itemType: 'weapon' | 'ball' };
+} | {
+  type: 'imageUploaded';
+  data: {
+    imageUrl: string;
+    itemType: 'weapon' | 'ball';
+    itemName: string;
+  };
+} | {
+  type: 'uploadImage';
+  data: {
+    imageUrl: string;
+    itemType: 'weapon' | 'ball';
+    itemName: string;
+  };
+} | {
+  type: 'fetchLeaderboard';
+  data: { tab: string };
 };
 
 /** 
@@ -56,6 +103,12 @@ export type LeaderboardEntry = {
   rank: number;
   createdAt: string;
   updatedAt: string;
+};
+
+export type CustomItemData = {
+  imageUrl: string;
+  name: string;
+  createdAt: string;
 };
 
 export type DevvitSystemMessage = {

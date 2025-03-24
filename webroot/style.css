@@ -2988,3 +2988,457 @@ canvas {
   margin-bottom: 40px;
   height: 200px;
 }
+
+/* Top Player Page Styles */
+.top-player-page {
+  background: var(--reddit-gray);
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+}
+
+.top-player-container {
+  background: rgba(30, 30, 30, 0.95);
+  padding: 40px;
+  border-radius: 20px;
+  border: 2px solid var(--reddit-orangered);
+  box-shadow: 0 0 30px rgba(255, 69, 0, 0.3);
+  max-width: 600px;
+  width: 100%;
+  text-align: center;
+}
+
+.player-achievement {
+  background: rgba(255, 255, 255, 0.05);
+  padding: 30px;
+  border-radius: 15px;
+  margin: 20px 0;
+  position: relative;
+  overflow: hidden;
+}
+
+.achievement-icon.trophy {
+  font-size: 48px;
+  margin-bottom: 20px;
+  animation: trophyBounce 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+.username-display {
+  font-size: 2.5rem;
+  color: var(--reddit-orangered);
+  margin-bottom: 10px;
+  font-weight: bold;
+  text-shadow: 0 0 10px rgba(255, 69, 0, 0.3);
+}
+
+.player-rank {
+  font-size: 1.8rem;
+  color: #FFF;
+  margin-bottom: 15px;
+}
+
+.player-score {
+  font-size: 2rem;
+  color: var(--reddit-orangered);
+  margin-bottom: 20px;
+  text-shadow: 0 0 10px rgba(255, 69, 0, 0.2);
+}
+
+.previous-player {
+  font-style: italic;
+  color: #a0a0a0;
+  font-size: 1.1rem;
+}
+
+/* Leaderboard Page Styles */
+.leaderboard-page {
+  background: var(--reddit-gray);
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+}
+
+.leaderboard-container {
+  background: rgba(30, 30, 30, 0.95);
+  padding: 40px;
+  border-radius: 20px;
+  border: 2px solid var(--reddit-orangered);
+  box-shadow: 0 0 30px rgba(255, 69, 0, 0.3);
+  max-width: 800px;
+  width: 100%;
+}
+
+.podium {
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  margin: 40px 0;
+  height: 300px;
+  gap: 20px;
+}
+
+.podium-place {
+  text-align: center;
+  padding: 20px;
+  border-radius: 10px 10px 0 0;
+  transition: all 0.3s ease;
+}
+
+.first-place {
+  background: linear-gradient(to top, #ffd700, #ffb700);
+  height: 200px;
+  width: 180px;
+  z-index: 3;
+}
+
+.second-place {
+  background: linear-gradient(to top, #c0c0c0, #e0e0e0);
+  height: 160px;
+  width: 160px;
+  z-index: 2;
+}
+
+.third-place {
+  background: linear-gradient(to top, #cd7f32, #e0a872);
+  height: 120px;
+  width: 160px;
+  z-index: 1;
+}
+
+.podium-place .rank {
+  font-size: 24px;
+  font-weight: bold;
+  color: #1a1a1b;
+  margin-bottom: 10px;
+}
+
+.podium-place .username {
+  font-size: 18px;
+  font-weight: bold;
+  color: #1a1a1b;
+  margin: 5px 0;
+  word-break: break-word;
+}
+
+.podium-place .score {
+  font-size: 16px;
+  color: #1a1a1b;
+}
+
+.first-place .username {
+  font-size: 22px;
+}
+
+.first-place .crown {
+  font-size: 24px;
+  margin-bottom: 5px;
+}
+
+.honorable-mentions {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
+  padding: 20px;
+  margin-bottom: 30px;
+}
+
+.honorable-mentions h2 {
+  text-align: center;
+  color: var(--reddit-orangered);
+  margin-bottom: 20px;
+  font-size: 1.8rem;
+}
+
+.mention-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.mention-item:last-child {
+  border-bottom: none;
+}
+
+.mention-rank {
+  font-weight: bold;
+  width: 30px;
+  color: #FFF;
+}
+
+.mention-username {
+  flex-grow: 1;
+  padding: 0 15px;
+  color: #FFF;
+}
+
+.mention-score {
+  font-weight: bold;
+  color: var(--reddit-orangered);
+}
+
+.footer {
+  text-align: center;
+  margin-top: 30px;
+  color: #a0a0a0;
+}
+
+.date {
+  font-style: italic;
+  margin-top: 5px;
+}
+
+@keyframes trophyBounce {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.2); }
+}
+
+/* Responsive styles */
+@media (max-width: 768px) {
+  .podium {
+    height: 250px;
+    gap: 10px;
+  }
+
+  .first-place {
+    height: 160px;
+    width: 140px;
+  }
+
+  .second-place {
+    height: 130px;
+    width: 120px;
+  }
+
+  .third-place {
+    height: 100px;
+    width: 120px;
+  }
+
+  .podium-place .username {
+    font-size: 16px;
+  }
+
+  .podium-place .score {
+    font-size: 14px;
+  }
+}
+
+@media (max-width: 480px) {
+  .top-player-container,
+  .leaderboard-container {
+    padding: 20px;
+  }
+
+  .username-display {
+    font-size: 2rem;
+  }
+
+  .player-rank,
+  .player-score {
+    font-size: 1.5rem;
+  }
+}
+
+/* Custom Item Upload Styles */
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.7);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+.modal.active {
+  opacity: 1;
+  visibility: visible;
+}
+
+.custom-item-modal {
+  background: #222;
+  border-radius: 12px;
+  border: 2px solid #444;
+  box-shadow: 0 0 20px rgba(0,0,0,0.5);
+  width: 90%;
+  max-width: 500px;
+  overflow: hidden;
+  transform: scale(0.9);
+  transition: transform 0.3s ease;
+}
+
+.modal.active .custom-item-modal {
+  transform: scale(1);
+}
+
+.custom-item-modal .modal-header {
+  background: #333;
+  border-bottom: 2px solid #444;
+  padding: 15px 20px;
+  border-radius: 10px 10px 0 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.custom-item-modal .modal-header h2 {
+  color: #fff;
+  margin: 0;
+  font-size: 1.5em;
+}
+
+.custom-item-modal .modal-close {
+  background: none;
+  border: none;
+  color: #aaa;
+  font-size: 24px;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.custom-item-modal .modal-close:hover {
+  color: #fff;
+}
+
+.custom-item-modal .modal-body {
+  padding: 20px;
+}
+
+.custom-item-modal .form-group {
+  margin-bottom: 15px;
+}
+
+.custom-item-modal label {
+  display: block;
+  margin-bottom: 8px;
+  color: #ddd;
+  font-weight: bold;
+}
+
+.custom-input {
+  width: 100%;
+  padding: 10px;
+  border-radius: 6px;
+  border: 1px solid #444;
+  background: #333;
+  color: #fff;
+  font-size: 16px;
+}
+
+.custom-input:focus {
+  outline: none;
+  border-color: #666;
+  box-shadow: 0 0 5px rgba(255,255,255,0.2);
+}
+
+.help-text {
+  color: #999;
+  font-size: 0.9em;
+  margin-top: 5px;
+}
+
+.upload-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.primary-button {
+  background: #4CAF50;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: background 0.2s;
+}
+
+.primary-button:hover {
+  background: #3e8e41;
+}
+
+.primary-button:disabled {
+  background: #666;
+  cursor: not-allowed;
+}
+
+.secondary-button {
+  background: #666;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.secondary-button:hover {
+  background: #555;
+}
+
+/* Custom weapon/ball item styles */
+.create-custom-weapon {
+  background: rgba(255, 255, 255, 0.05);
+  border: 2px dashed rgba(255, 255, 255, 0.2);
+  border-radius: 10px;
+  padding: 20px;
+  margin-bottom: 20px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: center;
+}
+
+.create-custom-weapon:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.create-custom-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.create-icon {
+  font-size: 32px;
+  width: 60px;
+  height: 60px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 15px;
+  color: #fff;
+}
+
+.create-custom-weapon h3 {
+  margin: 0 0 5px 0;
+  color: #fff;
+}
+
+.create-custom-weapon p {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.9em;
+}
+
+.ball-image {
+  max-width: 60px;
+  max-height: 60px;
+  object-fit: contain;
+}

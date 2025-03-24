@@ -1,34 +1,109 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Don't Drop Leaderboard</title>
-  <link rel="stylesheet" href="style.css">
-</head>
-<body class="leaderboard-page">
-  <div class="leaderboard-container">
-    <header class="leaderboard-header">
-      <h1 class="title">🏆 This Week's Champions 🏆</h1>
-    </header>
-    
-    <div id="podium" class="podium">
-      <!-- Podium will be populated by JavaScript -->
-    </div>
-    
-    <div id="honorable-mentions" class="honorable-mentions">
-      <h2>Honorable Mentions</h2>
-      <div id="mentions-list">
-        <!-- Mentions will be populated by JavaScript -->
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Don't Drop - Weekly Leaderboard</title>
+    <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet" href="fixes.css" />
+  </head>
+  <body class="leaderboard-page">
+    <div class="leaderboard-post">
+      <div class="post-header">
+        <h1>🏆 This Week's Top Players 🏆</h1>
+        <p class="date" id="current-date"></p>
+      </div>
+
+      <!-- Spotlight Section for Top Player -->
+      <div class="top-player-spotlight">
+        <h2>🎯 Top Player Spotlight 🎯</h2>
+        <div class="player-highlight">
+          <div class="player-avatar"></div>
+          <div class="player-details">
+            <h3 id="spotlight-name"></h3>
+            <p>Score: <span id="spotlight-score"></span></p>
+            <p>Rank: <span id="spotlight-rank"></span></p>
+            <p class="achievement" id="spotlight-achievement"></p>
+          </div>
+        </div>
+      </div>
+
+      <div class="leaderboard-content">
+        <table class="leaderboard-table">
+          <thead>
+            <tr>
+              <th>Rank</th>
+              <th>Player</th>
+              <th>Score</th>
+              <th>Achievement</th>
+            </tr>
+          </thead>
+          <tbody id="leaderboard-body">
+            <!-- Will be populated by JavaScript -->
+          </tbody>
+        </table>
+      </div>
+
+      <div class="post-footer">
+        <p>Think you can make it to the top? Play Don't Drop now!</p>
       </div>
     </div>
-    
-    <div class="footer">
-      <p>Weekly leaderboard update for Don't Drop</p>
-      <p class="date" id="current-date"></p>
-    </div>
-  </div>
-  
-  <script src="script.js"></script>
-</body>
+
+    <script>
+      // Parse leaderboard data from URL parameters
+      const urlParams = new URLSearchParams(window.location.search);
+      const data = JSON.parse(
+        decodeURIComponent(urlParams.get("data") || "[]")
+      );
+
+      // Format date
+      const dateElement = document.getElementById("current-date");
+      const options = {
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      };
+      dateElement.textContent = new Date().toLocaleDateString(
+        undefined,
+        options
+      );
+
+      // Render leaderboard
+      const leaderboardBody = document.getElementById("leaderboard-body");
+      data.forEach((entry, index) => {
+        const row = document.createElement("tr");
+        const medal = index < 3 ? ["🥇", "🥈", "🥉"][index] : "";
+
+        row.innerHTML = `
+        <td>${medal} ${index + 1}</td>
+        <td>${entry.username}</td>
+        <td>${entry.score.toLocaleString()}</td>
+        <td>${getAchievementText(entry.score)}</td>
+      `;
+
+        leaderboardBody.appendChild(row);
+
+        // Populate spotlight for the top player
+        if (index === 0) {
+          document.getElementById("spotlight-name").textContent =
+            entry.username;
+          document.getElementById("spotlight-score").textContent =
+            entry.score.toLocaleString();
+          document.getElementById("spotlight-rank").textContent = `#${
+            index + 1
+          }`;
+          document.getElementById("spotlight-achievement").textContent =
+            getAchievementText(entry.score);
+        }
+      });
+
+      function getAchievementText(score) {
+        if (score >= 250) return "🎯 Reddit Legend";
+        if (score >= 100) return "🎮 Paddle Master";
+        if (score >= 50) return "🏓 Table Tennis Novice";
+        return "🎱 Ping Pong Beginner";
+      }
+    </script>
+  </body>
 </html>

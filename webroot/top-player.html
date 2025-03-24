@@ -1,26 +1,67 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>New Top Player</title>
-  <link rel="stylesheet" href="style.css">
-</head>
-<body class="top-player-page">
-  <div class="top-player-container">
-    <header class="top-player-header">
-      <h1 class="title">New Top Player Alert! 🌟</h1>
-    </header>
-    
-    <div id="player-achievement" class="player-achievement">
-      <!-- Player info will be populated by JavaScript -->
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Don't Drop - New Top Player!</title>
+    <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet" href="fixes.css" />
+  </head>
+  <body class="top-player-page">
+    <div class="top-player-post">
+      <div class="post-header">
+        <h1>🎯 New Top Player Achievement! 🎯</h1>
+        <p class="date" id="current-date"></p>
+      </div>
+
+      <div class="achievement-content">
+        <div class="player-spotlight">
+          <div class="player-avatar"></div>
+          <h2 id="player-name"></h2>
+          <p>Score: <span id="player-score"></span></p>
+          <p>Rank: <span id="player-rank"></span></p>
+          <p class="achievement" id="player-achievement"></p>
+        </div>
+      </div>
+
+      <div class="post-footer">
+        <p>Congratulations! Can you beat this score? Play Don't Drop now!</p>
+      </div>
     </div>
-    
-    <div class="footer">
-      <p>Can you beat this score?</p>
-    </div>
-  </div>
-  
-  <script src="script.js"></script>
-</body>
+    <script>
+      // Parse player data from URL parameters
+      const urlParams = new URLSearchParams(window.location.search);
+      const data = JSON.parse(
+        decodeURIComponent(urlParams.get("data") || "{}")
+      );
+
+      // Format date
+      const dateElement = document.getElementById("current-date");
+      const options = {
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      };
+      dateElement.textContent = new Date().toLocaleDateString(
+        undefined,
+        options
+      );
+
+      // Update player info
+      document.getElementById("player-name").textContent = data.username;
+      document.getElementById("player-score").textContent =
+        data.score.toLocaleString();
+      document.getElementById("player-rank").textContent = `#${data.rank}`;
+      document.getElementById("player-achievement").textContent =
+        getAchievementText(data.score);
+
+      function getAchievementText(score) {
+        if (score >= 250) return "🎯 Reddit Legend";
+        if (score >= 100) return "🎮 Paddle Master";
+        if (score >= 50) return "🏓 Table Tennis Novice";
+        return "🎱 Ping Pong Beginner";
+      }
+    </script>
+  </body>
 </html>
