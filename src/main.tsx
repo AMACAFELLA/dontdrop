@@ -151,7 +151,7 @@ const DontDropGame = ({ context }: { context: Devvit.Context }) => {
             break;
           }
 
-          case 'getLeaderboard': {
+          case 'fetchLeaderboard': { // <-- Renamed to match frontend request type
             const currentUser = await context.reddit.getCurrentUser();
             // const subreddit = await context.reddit.getCurrentSubreddit();
             // const subredditName = subreddit?.name || 'unknown_subreddit';
@@ -495,9 +495,10 @@ Devvit.addMenuItem({
   }
 });
 
-// Weekly leaderboard update scheduler job - USE THE SERVICE
+// Daily leaderboard update scheduler job - USE THE SERVICE
 Devvit.addSchedulerJob({
-  name: 'weekly_leaderboard_update',
+  name: 'daily_leaderboard_update', // Renamed job
+  // Schedule is likely defined in devvit.yaml
   onRun: async (_, context) => {
     try {
       const leaderboardService = new LeaderboardService(context); // Instantiate service
@@ -514,7 +515,7 @@ Devvit.addSchedulerJob({
       const subreddit = await context.reddit.getCurrentSubreddit();
 
       await context.reddit.submitPost({
-        title: `📊 Weekly Don't Drop Leaderboard Update - Top Players 🏆`,
+        title: `📊 Daily Don't Drop Leaderboard Update - Top Players 🏆`, // Updated title
         subredditName: subreddit.name,
         preview: (
           <blocks height="tall">
@@ -523,9 +524,9 @@ Devvit.addSchedulerJob({
           </blocks>
         ),
       });
-      console.log('Weekly leaderboard post created successfully.');
+      console.log('Daily leaderboard post created successfully.'); // Updated log
     } catch (error) {
-      console.error('Error running weekly leaderboard job:', error);
+      console.error('Error running daily leaderboard job:', error); // Updated log
     }
   },
 });

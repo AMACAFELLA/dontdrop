@@ -65,7 +65,8 @@ export type DevvitMessage = {
 type WebViewMessagePayloadMap = {
   webViewReady: {}; // No data needed
   gameOver: { finalScore: number };
-  getLeaderboard: {
+  // Removed 'getLeaderboard', replaced with 'fetchLeaderboard'
+  fetchLeaderboard: { // Renamed to match frontend request
     existingLeaderboard?: LeaderboardEntry[]; // Optional existing data
     tab?: 'this-subreddit' | 'all-subreddits'; // Add the requested tab
   };

@@ -13,6 +13,22 @@ let customBalls = []; // Store custom balls from the server
 const MAX_RETRY_ATTEMPTS = 3;
 const RETRY_DELAY = 1000; // 1 second
 
+// Anti-cheat tracking for repetitive hits
+const HitLocation = {
+    NONE: 0,
+    PADDLE: 1,
+    LEFT_WALL: 2,
+    RIGHT_WALL: 3,
+    TOP_WALL: 4,
+    TOP_LEFT_CORNER: 5,
+    TOP_RIGHT_CORNER: 6,
+};
+let lastHitLocation = HitLocation.NONE;
+let consecutiveHitCount = 0;
+const MAX_CONSECUTIVE_HITS_FOR_SCORE = 2; // Allow score for the first 2 hits in the same spot
+let hitHistory = []; // Track the last few hit locations for pattern detection
+const HIT_HISTORY_LENGTH = 4; // How many hits to remember for pattern detection
+
 // Weapon system
 const weapons = {
     paddles: {
@@ -191,39 +207,15 @@ let cursorX = 0;
 let cursorY = 0;
 let lastCursorY = 0;
 let paddleVelocityY = 0;
+let lastPaddleX = 0; // For stationary check
+let lastPaddleY = 0; // For stationary check
+let paddleStationaryFrames = 0; // Counter for how many frames the paddle hasn't moved
+const PADDLE_STATIONARY_THRESHOLD_FRAMES = 120; // Approx 2 seconds at 60fps
+const PADDLE_MOVE_TOLERANCE = 5; // Pixels the paddle must move to reset timer
 
 // Screen Management
 let currentScreen = 'menu';
 
-// Function to ensure leaderboard is displayed with existing data
-function ensureLeaderboardDisplayed() {
-    console.log("Ensuring leaderboard is displayed with existing data");
-
-    // If we already have leaderboard data stored, display it immediately
-    if (Array.isArray(leaderboard) && leaderboard.length > 0) {
-        console.log("Using existing leaderboard data for immediate display:", leaderboard);
-        renderLeaderboard(leaderboard);
-    } else {
-        console.log("No existing leaderboard data, using guaranteed fallback data");
-        // Create guaranteed fallback data with the known user entry
-        const fallbackData = [{
-            username: "Due_Analyst_5617",
-            score: 2159,
-            rank: 1,
-            createdAt: "2025-03-18T17:10:38.858Z",
-            updatedAt: "2025-03-19T07:00:07.239Z"
-        }];
-
-        // Update the global leaderboard variable
-        leaderboard = fallbackData;
-
-        // Render with the fallback data
-        renderLeaderboard(fallbackData);
-
-        // Still try to get fresh data from the server
-        refreshLeaderboard();
-    }
-}
 
 function showScreen(screenId) {
     // Clean up any existing game state first
@@ -242,12 +234,6 @@ function showScreen(screenId) {
         // Initialize game if showing game screen
         if (screenId === 'game-screen') {
             initGame();
-        }
-
-        // Handle leaderboard screen specifically
-        if (screenId === 'leaderboard-screen') {
-            console.log("Showing leaderboard screen, ensuring data is displayed");
-            ensureLeaderboardDisplayed();
         }
 
         // Handle menu screen
@@ -290,81 +276,6 @@ function initFloatingElements() {
 let leaderboard = [];
 
 // Set up message event listener to handle messages from Devvit
-window.addEventListener('message', (event) => {
-    if (!event.data || event.data.type !== 'devvit-message') return;
-
-    const { message } = event.data.data;
-
-    switch (message.type) {
-        case 'initialData':
-            // Handle initial data from server
-            username = message.data.username || 'Guest';
-            if (message.data.leaderboard) {
-                leaderboard = message.data.leaderboard;
-                renderLeaderboard({ tab: 'all-time', entries: leaderboard });
-            }
-
-            // Request custom weapons if we have a username
-            if (username !== 'Guest') {
-                requestCustomWeapons();
-            }
-            break;
-
-        case 'leaderboardData':
-            // Handle leaderboard data
-            leaderboardRequestInProgress = false;
-            if (message.data && message.data.leaderboard) {
-                leaderboard = message.data.leaderboard;
-                renderLeaderboard({ tab: 'all-time', entries: leaderboard });
-            }
-            break;
-
-        case 'gameOverAck':
-            // Handle game over acknowledgment
-            if (message.data && message.data.leaderboard) {
-                leaderboard = message.data.leaderboard;
-                renderLeaderboard({ tab: 'all-time', entries: leaderboard });
-            }
-            break;
-
-        case 'customItemsData':
-            // Handle custom items data
-            if (message.data && message.data.weapon) {
-                handleCustomWeaponsData(message.data);
-            }
-            break;
-
-        case 'uploadUrlGenerated':
-            // Handle upload URL generation
-            if (message.data) {
-                handleUploadUrlGenerated(message.data);
-            }
-            break;
-
-        case 'mediaUploaded':
-            // Handle media upload completion
-            if (message.data) {
-                showAward('gold', 'Custom item uploaded successfully!');
-                requestCustomWeapons(); // Refresh custom weapons
-            }
-            break;
-
-        case 'uploadComplete':
-            // Handle upload completion
-            if (message.data) {
-                showAward('gold', `Custom ${message.data.itemType} uploaded successfully!`);
-                requestCustomWeapons(); // Refresh custom weapons
-            }
-            break;
-
-        case 'error':
-            // Handle error messages
-            if (message.data && message.data.message) {
-                showError(message.data.message);
-            }
-            break;
-    }
-});
 
 // Initialize Menu and Event Listeners
 function initMenu() {
@@ -384,13 +295,6 @@ function initMenu() {
             showWeaponSelection();
         });
     }
-
-    // Leaderboard button
-    document.getElementById('leaderboard-btn').addEventListener('click', () => {
-        console.log("Leaderboard button clicked, showing leaderboard screen");
-        showScreen('leaderboard-screen');
-        // This is now handled by the showScreen function through ensureLeaderboardDisplayed
-    });
 
     // Add event listener for badges button
     const badgesBtn = document.getElementById('badges-btn');
@@ -518,6 +422,7 @@ function resetBall() {
     ballSpeedX = 0;
     ballSpeedY = 0;
     paddleVelocityY = 0;
+    hitHistory = []; // Reset anti-cheat pattern history
 
     console.log("Ball reset to position:", ballX, ballY);
 }
@@ -707,6 +612,23 @@ function checkCollision() {
         ballSpeedX = Math.sin(bounceAngle) * newSpeed;
         ballSpeedY = -Math.cos(bounceAngle) * newSpeed * ballBounceMultiplier;
 
+        // --- Anti-cheat: Track paddle hit ---
+        const currentHitLocationThisFrame = HitLocation.PADDLE;
+        if (currentHitLocationThisFrame === lastHitLocation) {
+            consecutiveHitCount++;
+            console.log(`Consecutive hit at PADDLE: ${consecutiveHitCount}`);
+        } else {
+            lastHitLocation = currentHitLocationThisFrame;
+            consecutiveHitCount = 1; // Reset count for new location
+            console.log(`New hit location: PADDLE`);
+        }
+        // Update hit history
+        hitHistory.push(HitLocation.PADDLE);
+        if (hitHistory.length > HIT_HISTORY_LENGTH) {
+            hitHistory.shift(); // Keep history length fixed
+        }
+        // --- End Anti-cheat tracking ---
+
         // Apply special paddle powers
         applyPaddlePower();
 
@@ -718,14 +640,55 @@ function checkCollision() {
         // Create hit effect
         createHitEffect(ballRect.left + ballRect.width / 2, ballRect.top);
 
-        // Update score with multipliers
+        // Update score with multipliers (and anti-cheat check)
         const pointsGained = Math.ceil(1 * scoreMultiplier);
-        currentScore += pointsGained;
 
-        // Create score popup showing points gained
-        createScorePopup(ballRect.left + ballRect.width / 2, ballRect.top - 20, `+${pointsGained}`);
+        // --- Anti-cheat: Check for rapid alternating pattern ---
+        let isAlternatingPattern = false;
+        if (hitHistory.length >= HIT_HISTORY_LENGTH) {
+            const lastHit = hitHistory[HIT_HISTORY_LENGTH - 1]; // PADDLE
+            const secondLastHit = hitHistory[HIT_HISTORY_LENGTH - 2]; // OTHER
+            const thirdLastHit = hitHistory[HIT_HISTORY_LENGTH - 3]; // PADDLE
+            const fourthLastHit = hitHistory[HIT_HISTORY_LENGTH - 4]; // OTHER
 
-        // Update multiplier (combo system)
+            if (lastHit === HitLocation.PADDLE && thirdLastHit === HitLocation.PADDLE &&
+                secondLastHit !== HitLocation.PADDLE && secondLastHit !== HitLocation.NONE &&
+                secondLastHit === fourthLastHit) { // Check if the 'OTHER' hits are the same location
+                isAlternatingPattern = true;
+                console.log(`Alternating pattern detected: ${fourthLastHit}-${thirdLastHit}-${secondLastHit}-${lastHit}. No score awarded.`);
+            }
+        }
+        // --- End Anti-cheat pattern check ---
+
+        // --- Anti-cheat: Check if paddle is stationary ---
+        const isPaddleStationary = paddleStationaryFrames >= PADDLE_STATIONARY_THRESHOLD_FRAMES;
+        if (isPaddleStationary) {
+            console.log(`Paddle stationary for ${paddleStationaryFrames} frames. No score awarded.`);
+        }
+        // --- End stationary check ---
+
+        // Award score only if NOT exceeding consecutive hits AND NOT in a rapid alternating pattern AND paddle is NOT stationary
+        if (consecutiveHitCount <= MAX_CONSECUTIVE_HITS_FOR_SCORE && !isAlternatingPattern && !isPaddleStationary) {
+            currentScore += pointsGained;
+            // Create score popup showing points gained
+            createScorePopup(ballRect.left + ballRect.width / 2, ballRect.top - 20, `+${pointsGained}`);
+        } else {
+            // Optionally show a different popup or message indicating no score due to repetition
+            let reason = `x${consecutiveHitCount}`; // Default reason: consecutive hits
+            if (isPaddleStationary) {
+                reason = "Idle"; // Reason: paddle stationary
+                console.log(`Score not awarded due to stationary paddle.`);
+            } else if (isAlternatingPattern) {
+                reason = "Pattern"; // Reason: alternating pattern
+                console.log(`Score not awarded due to alternating pattern.`);
+            } else {
+                console.log(`Score not awarded for hit ${consecutiveHitCount} at PADDLE`);
+            }
+            createScorePopup(ballRect.left + ballRect.width / 2, ballRect.top - 20, reason); // Show reason
+        }
+
+
+        // Update multiplier (combo system) - Should this also be conditional? Maybe not, combo relies on hits.
         updateMultiplier();
 
         // Play hit sound
@@ -831,6 +794,21 @@ function createBallTrail() {
 
 function gameLoop() {
     if (!gameArea || !ball) return;
+    // --- Anti-cheat: Track stationary paddle ---
+    const currentPaddleX = cursorX; // Use cursor position as proxy for paddle center
+    const currentPaddleY = cursorY;
+
+    const dx = Math.abs(currentPaddleX - lastPaddleX);
+    const dy = Math.abs(currentPaddleY - lastPaddleY);
+
+    if (dx < PADDLE_MOVE_TOLERANCE && dy < PADDLE_MOVE_TOLERANCE) {
+        paddleStationaryFrames++;
+    } else {
+        paddleStationaryFrames = 0; // Reset if moved enough
+        lastPaddleX = currentPaddleX;
+        lastPaddleY = currentPaddleY;
+    }
+    // --- End stationary paddle tracking ---
 
     if (gameStarted) {
         // Apply the ball's specific gravity
@@ -846,30 +824,104 @@ function gameLoop() {
         ballX += ballSpeedX;
         ballY += ballSpeedY;
 
-        // Add wall collision detection
-        // Left and right walls
-        if (ballX <= 0) {
-            ballX = 0;
-            ballSpeedX = -ballSpeedX;
-            createHitEffect(0, ballY + BALL_SIZE / 2);
-            playSound('hit');
-        } else if (ballX + BALL_SIZE >= gameArea.offsetWidth) {
-            ballX = gameArea.offsetWidth - BALL_SIZE;
-            ballSpeedX = -ballSpeedX;
-            createHitEffect(gameArea.offsetWidth, ballY + BALL_SIZE / 2);
-            playSound('hit');
-        }
+        // --- Wall and Corner Collision Detection ---
+        const gameWidth = gameArea.offsetWidth;
+        const cornerThreshold = 20; // Increased threshold slightly for better detection
+        const cornerHorizontalSpeed = 18;
+        const cornerVerticalSpeed = 1;
+        let currentHitLocationThisFrame = HitLocation.NONE;
+        let performedReflection = false; // Track if reflection happened this frame
 
-        // Top wall
+        // Check Top Wall
         if (ballY <= 0) {
             ballY = 0;
-            ballSpeedY = -ballSpeedY;
+            ballSpeedY = -ballSpeedY; // Reflect vertically
+            performedReflection = true;
+            currentHitLocationThisFrame = HitLocation.TOP_WALL; // Assume top wall first
             createHitEffect(ballX + BALL_SIZE / 2, 0);
             playSound('hit');
         }
 
+        // Check Left Wall
+        if (ballX <= 0) {
+            ballX = 0;
+            ballSpeedX = -ballSpeedX; // Reflect horizontally
+            performedReflection = true;
+            // If already hit top, it's top-left corner, otherwise left wall
+            currentHitLocationThisFrame = (currentHitLocationThisFrame === HitLocation.TOP_WALL) ? HitLocation.TOP_LEFT_CORNER : HitLocation.LEFT_WALL;
+            createHitEffect(0, ballY + BALL_SIZE / 2);
+            if (currentHitLocationThisFrame === HitLocation.LEFT_WALL) playSound('hit'); // Avoid double sound on corner
+        }
+        // Check Right Wall
+        else if (ballX + BALL_SIZE >= gameWidth) {
+            ballX = gameWidth - BALL_SIZE;
+            ballSpeedX = -ballSpeedX; // Reflect horizontally
+            performedReflection = true;
+            // If already hit top, it's top-right corner, otherwise right wall
+            currentHitLocationThisFrame = (currentHitLocationThisFrame === HitLocation.TOP_WALL) ? HitLocation.TOP_RIGHT_CORNER : HitLocation.RIGHT_WALL;
+            createHitEffect(gameWidth, ballY + BALL_SIZE / 2);
+            if (currentHitLocationThisFrame === HitLocation.RIGHT_WALL) playSound('hit'); // Avoid double sound on corner
+        }
+
+        // Refine Corner Location & Apply Boost (if reflection happened)
+        if (performedReflection) {
+            const isInTopLeftCorner = ballX <= cornerThreshold && ballY <= cornerThreshold;
+            const isInTopRightCorner = ballX + BALL_SIZE >= gameWidth - cornerThreshold && ballY <= cornerThreshold;
+
+            if (isInTopLeftCorner) {
+                currentHitLocationThisFrame = HitLocation.TOP_LEFT_CORNER;
+                // Apply boost only if moving away from corner after reflection
+                if (ballSpeedX > 0 && ballSpeedY > 0) {
+                    console.log("Top-left corner boost applied");
+                    ballSpeedX = cornerHorizontalSpeed;
+                    ballSpeedY = cornerVerticalSpeed;
+                }
+            } else if (isInTopRightCorner) {
+                currentHitLocationThisFrame = HitLocation.TOP_RIGHT_CORNER;
+                // Apply boost only if moving away from corner after reflection
+                if (ballSpeedX < 0 && ballSpeedY > 0) {
+                    console.log("Top-right corner boost applied");
+                    ballSpeedX = -cornerHorizontalSpeed;
+                    ballSpeedY = cornerVerticalSpeed;
+                }
+            }
+            // If it was just a top wall hit, ensure it wasn't actually in a corner zone
+            else if (currentHitLocationThisFrame === HitLocation.TOP_WALL && (ballX <= cornerThreshold || ballX + BALL_SIZE >= gameWidth - cornerThreshold)) {
+                // It hit the top wall within the horizontal bounds of a corner, but not the side wall simultaneously.
+                // We might still classify this as a corner depending on desired behavior, but for now, keep as TOP_WALL.
+                // console.log("Hit top wall within corner horizontal bounds");
+            }
+
+            // --- Update Hit History & Consecutive Count ---
+            if (currentHitLocationThisFrame !== HitLocation.NONE) {
+                if (currentHitLocationThisFrame === lastHitLocation) {
+                    consecutiveHitCount++;
+                    console.log(`Consecutive hit at ${Object.keys(HitLocation).find(key => HitLocation[key] === currentHitLocationThisFrame)}: ${consecutiveHitCount}`);
+                } else {
+                    lastHitLocation = currentHitLocationThisFrame;
+                    consecutiveHitCount = 1; // Reset count for new location
+                    console.log(`New hit location: ${Object.keys(HitLocation).find(key => HitLocation[key] === currentHitLocationThisFrame)}`);
+                }
+                // Update hit history for wall/corner hits
+                hitHistory.push(currentHitLocationThisFrame);
+                if (hitHistory.length > HIT_HISTORY_LENGTH) {
+                    hitHistory.shift(); // Keep history length fixed
+                }
+            }
+        } else {
+            // If no wall/corner hit this frame, reset consecutive count if last hit wasn't paddle
+            // (Paddle hits are handled in checkCollision)
+            if (lastHitLocation !== HitLocation.PADDLE && lastHitLocation !== HitLocation.NONE) {
+                // Reset if the last hit was a wall/corner and this frame isn't.
+                // lastHitLocation = HitLocation.NONE; // Optionally reset fully
+                // consecutiveHitCount = 0;
+            }
+        }
+        // --- End Wall and Corner Collision ---
+
+
         // Check for collision with paddle
-        checkCollision();
+        checkCollision(); // Paddle collision will handle its own location tracking
 
         // Update score display
         updateScore();
@@ -921,7 +973,6 @@ function gameOver() {
             ${scoreMessage}
             <div class="game-over-buttons">
                 <button class="menu-button primary" id="play-again-button">Play Again</button>
-                <button class="menu-button" id="view-leaderboard-button">Leaderboard</button>
                 <button class="menu-button" id="back-to-menu-button">Main Menu</button>
             </div>
         </div>
@@ -930,20 +981,12 @@ function gameOver() {
 
     // Add event listeners with improved menu navigation
     const playAgainButton = overlay.querySelector('#play-again-button');
-    const viewLeaderboardButton = overlay.querySelector('#view-leaderboard-button');
     const backToMenuButton = overlay.querySelector('#back-to-menu-button');
 
     if (playAgainButton) {
         playAgainButton.addEventListener('click', () => {
             resetGame();
             showScreen('game-screen');
-        });
-    }
-
-    if (viewLeaderboardButton) {
-        viewLeaderboardButton.addEventListener('click', () => {
-            gameOverContainer.innerHTML = '';
-            showScreen('leaderboard-screen');
         });
     }
 
@@ -1309,96 +1352,6 @@ function debugLeaderboardDOM() {
     }
 }
 
-// Render leaderboard with data
-function renderLeaderboard(leaderboardData) {
-    console.log("Rendering leaderboard with data:", leaderboardData);
-    leaderboardRequestInProgress = false; // Ensure flag is reset regardless of success or failure
-
-    const leaderboardEntries = document.getElementById('leaderboard-entries');
-
-    if (!leaderboardEntries) {
-        console.error("Leaderboard entries element not found");
-        return;
-    }
-
-    // Clear any existing loading indicators or error messages
-    const loadingIndicator = document.querySelector('.loading-spinner');
-    if (loadingIndicator) {
-        loadingIndicator.remove();
-    }
-
-    // Start with empty entries HTML
-    let entriesHTML = '';
-
-    // Use guaranteed data if no valid data is provided
-    if (!Array.isArray(leaderboardData) || leaderboardData.length === 0) {
-        console.log("Using guaranteed fallback data for rendering");
-        leaderboardData = [{
-            username: "Due_Analyst_5617",
-            score: 2159,
-            rank: 1,
-            createdAt: "2025-03-18T17:10:38.858Z",
-            updatedAt: "2025-03-19T07:00:07.239Z"
-        }];
-
-        // Update the global leaderboard variable
-        leaderboard = leaderboardData;
-    }
-
-    console.log(`Processing ${leaderboardData.length} leaderboard entries for display`);
-
-    // Add entries
-    leaderboardData.forEach((entry, index) => {
-        // Ensure entry has all required fields and debug
-        if (!entry || typeof entry !== 'object') {
-            console.error(`Invalid entry at index ${index}:`, entry);
-            return;
-        }
-
-        console.log(`Processing entry ${index}:`, entry);
-
-        const username = entry.username || 'Unknown';
-        const score = entry.score || 0;
-        const rank = entry.rank || (index + 1);
-
-        const isCurrentUser = username === currentUsername;
-        const formattedDate = formatDate(entry.updatedAt);
-
-        console.log(`Entry details - Username: ${username}, Score: ${score}, Rank: ${rank}, IsCurrentUser: ${isCurrentUser}`);
-
-        entriesHTML += `
-            <div class="leaderboard-entry ${isCurrentUser ? 'current-user' : ''} rank-${rank}">
-                <div class="rank-col">
-                    ${rank <= 3 ?
-                `<span class="rank-medal rank-${rank}">${rank}</span>` :
-                rank}
-                </div>
-                <div class="name-col">
-                    <span class="user-avatar"></span>
-                    ${username}
-                    ${isCurrentUser ? '<span class="current-user-tag">(You)</span>' : ''}
-                </div>
-                <div class="score-col">${score.toLocaleString()}</div>
-                <div class="date-col">${formattedDate}</div>
-            </div>
-        `;
-    });
-
-    // The code to display empty state message is removed since we always show at least the fallback data
-
-    console.log("Updating leaderboard HTML with entries");
-    // Update the entries container with our HTML
-    leaderboardEntries.innerHTML = entriesHTML;
-
-    // Add a subtle animation to show the leaderboard has updated
-    leaderboardEntries.classList.add('updated');
-    setTimeout(() => {
-        leaderboardEntries.classList.remove('updated');
-    }, 500);
-
-    // Debug the DOM structure after rendering
-    setTimeout(debugLeaderboardDOM, 100);
-}
 
 // Helper function to format dates
 function formatDate(dateString) {
@@ -1751,24 +1704,35 @@ function handleBallHit() {
 }
 
 // Handle messages from Devvit - add error handling
-window.addEventListener('message', async (event) => {
-    if (!event.data || event.data.type !== 'devvit-message') return;
+window.addEventListener('message', (event) => { // Removed async
+    // Log the received event data structure immediately
+    console.log("[MsgListener Raw Event Data]:", event.data);
+
+    // Basic check for the outer message structure
+    if (!event.data || event.data.type !== 'devvit-message' || !event.data.data || !event.data.data.message) {
+        console.log("[MsgListener] Ignoring message with unexpected structure or missing inner message.");
+        return;
+    }
 
     try {
-        const { message } = event.data.data;
-        if (!message) return;
+        // Access the inner message directly
+        const innerMessage = event.data.data.message;
+        const messageType = innerMessage.type; // Store type in a variable
 
-        console.log("Received message from Devvit:", message.type, message);
+        // Log crucial info before switch
+        console.log(`[MsgListener] Received inner message type: "${messageType}"`, innerMessage);
 
-        switch (message.type) {
+        // Switch on the stored type
+        switch (messageType) {
             case 'error':
-                showError(message.data.message);
+                showError(innerMessage.data.message); // Use innerMessage here too
                 break;
 
             case 'initialData':
+                console.log("[MsgListener] Handling initialData message");
                 // Store the username provided by server
-                if (message.data.username) {
-                    currentUsername = message.data.username;
+                if (innerMessage.data.username) { // Use innerMessage
+                    currentUsername = innerMessage.data.username; // Use innerMessage
                     confirmedUsername = true;
                     // Save to localStorage as a backup
                     localStorage.setItem('dontdrop_username', currentUsername);
@@ -1790,7 +1754,7 @@ window.addEventListener('message', async (event) => {
                     // Force update the game instructions if already showing
                     const instructions = document.getElementById('instructions');
                     if (instructions && instructions.style.display === 'block') {
-                        instructions.innerHTML = `Playing as <span class="username">${currentUsername}</span>. <p>Click to start!</p>`;
+                        instructions.innerHTML = `<p>Click to start!</p>`;
                     }
                 } else {
                     console.error("No username received from server. Using Due_Analyst_5617 as fallback.");
@@ -1800,9 +1764,9 @@ window.addEventListener('message', async (event) => {
 
                 // Process the leaderboard data from initialData
                 try {
-                    if (message.data.leaderboard && Array.isArray(message.data.leaderboard) && message.data.leaderboard.length > 0) {
+                    if (innerMessage.data.leaderboard && Array.isArray(innerMessage.data.leaderboard) && innerMessage.data.leaderboard.length > 0) { // Use innerMessage
                         // Store as a new array to avoid reference issues
-                        leaderboard = JSON.parse(JSON.stringify(message.data.leaderboard));
+                        leaderboard = JSON.parse(JSON.stringify(innerMessage.data.leaderboard)); // Use innerMessage
 
                         // Sort by rank if needed
                         if (leaderboard.length > 1) {
@@ -1811,13 +1775,15 @@ window.addEventListener('message', async (event) => {
 
                         console.log("Processed leaderboard data:", leaderboard);
 
-                        // Immediately render the leaderboard if we're on that screen
-                        if (document.getElementById('leaderboard-screen').classList.contains('active')) {
-                            console.log("Leaderboard screen is active, rendering immediately");
-                            renderLeaderboard(leaderboard);
-                        }
+                        // Leaderboard screen is removed, no need to render immediately
+                        // if (document.getElementById('leaderboard-screen').classList.contains('active')) {
+                        //     console.log("[MsgListener] Leaderboard screen active, rendering initialData immediately.");
+                        //     // Pass data in the expected { tab, entries } format
+                        //     console.log("[MsgListener] Calling renderLeaderboard from initialData (success) with:", { tab: 'this-subreddit', entries: leaderboard });
+                        //     renderLeaderboard({ tab: 'this-subreddit', entries: leaderboard });
+                        // }
                     } else {
-                        console.log("No valid leaderboard data in initialData, using fallback");
+                        console.warn("[MsgListener] No valid leaderboard data in initialData, using fallback."); // Changed to warn
                         // Create guaranteed fallback data with the known user entry
                         leaderboard = [{
                             username: "Due_Analyst_5617",
@@ -1827,13 +1793,16 @@ window.addEventListener('message', async (event) => {
                             updatedAt: "2025-03-19T07:00:07.239Z"
                         }];
 
-                        // Render if active
-                        if (document.getElementById('leaderboard-screen').classList.contains('active')) {
-                            renderLeaderboard(leaderboard);
-                        }
+                        // Leaderboard screen is removed, no need to render fallback
+                        // if (document.getElementById('leaderboard-screen').classList.contains('active')) {
+                        //     console.log("[MsgListener] Leaderboard screen active, rendering initialData fallback.");
+                        //     // Pass data in the expected { tab, entries } format
+                        //     console.log("[MsgListener] Calling renderLeaderboard from initialData (fallback) with:", { tab: 'this-subreddit', entries: leaderboard });
+                        //     renderLeaderboard({ tab: 'this-subreddit', entries: leaderboard });
+                        // }
                     }
                 } catch (error) {
-                    console.error("Error processing leaderboard data:", error);
+                    console.error("[MsgListener] Error processing initialData leaderboard:", error);
                     // Even if there's an error, use the fallback data
                     leaderboard = [{
                         username: "Due_Analyst_5617",
@@ -1843,23 +1812,25 @@ window.addEventListener('message', async (event) => {
                         updatedAt: "2025-03-19T07:00:07.239Z"
                     }];
 
-                    if (document.getElementById('leaderboard-screen').classList.contains('active')) {
-                        renderLeaderboard(leaderboard);
-                    }
+                    // Leaderboard screen is removed, no need to render
+                    // if (document.getElementById('leaderboard-screen').classList.contains('active')) {
+                    //     // Pass data in the expected { tab, entries } format
+                    //     renderLeaderboard({ tab: 'this-subreddit', entries: leaderboard });
+                    // }
                 }
                 break;
 
             case 'leaderboardData':
-                console.log("Received leaderboardData response with entries:", message.data?.leaderboard?.length || 0);
+                console.log("[MsgListener] Handling leaderboardData message:", innerMessage.data); // Use innerMessage
                 leaderboardRequestInProgress = false; // Request completed
 
                 // Check if the server is confirming our username
-                if (message.data?.username && message.data.username !== currentUsername) {
-                    console.log(`Server confirmed different username in leaderboardData: ${message.data.username}, updating from ${currentUsername}`);
-                    currentUsername = message.data.username;
+                if (innerMessage.data?.username && innerMessage.data.username !== currentUsername) { // Use innerMessage
+                    console.log(`Server confirmed different username in leaderboardData: ${innerMessage.data.username}, updating from ${currentUsername}`); // Use innerMessage
+                    currentUsername = innerMessage.data.username; // Use innerMessage
                     confirmedUsername = true;
                     localStorage.setItem('dontdrop_username', currentUsername);
-                } else if (!message.data?.username) {
+                } else if (!innerMessage.data?.username) { // Use innerMessage
                     console.warn("No username in leaderboardData response, using Due_Analyst_5617 as fallback");
                     if (!currentUsername) {
                         currentUsername = "Due_Analyst_5617";
@@ -1869,11 +1840,11 @@ window.addEventListener('message', async (event) => {
 
                 // Process the leaderboard data - but include fallback
                 try {
-                    if (message.data && message.data.leaderboard && Array.isArray(message.data.leaderboard) && message.data.leaderboard.length > 0) {
-                        console.log("Updating leaderboard with received data:", message.data.leaderboard);
+                    if (innerMessage.data && innerMessage.data.leaderboard && Array.isArray(innerMessage.data.leaderboard) && innerMessage.data.leaderboard.length > 0) { // Use innerMessage
+                        console.log("Updating leaderboard with received data:", innerMessage.data.leaderboard); // Use innerMessage
 
                         // Create a deep copy of the array to avoid reference issues
-                        leaderboard = JSON.parse(JSON.stringify(message.data.leaderboard));
+                        leaderboard = JSON.parse(JSON.stringify(innerMessage.data.leaderboard)); // Use innerMessage
 
                         // Sort by rank if needed
                         if (leaderboard.length > 1) {
@@ -1903,14 +1874,81 @@ window.addEventListener('message', async (event) => {
                 }
 
                 // Always render the leaderboard with whatever data we have
-                renderLeaderboard(leaderboard);
+                const renderData = { tab: innerMessage.data.tab || 'this-subreddit', entries: leaderboard }; // Use innerMessage
+                console.log("[MsgListener] Calling renderLeaderboard from leaderboardData with:", renderData);
+                // Pass the data in the format expected by the correct render function
+                renderLeaderboard(renderData);
+                break;
+
+            case 'gameOverAck':
+                console.log("[MsgListener] Handling gameOverAck message:", innerMessage.data); // Use innerMessage
+                leaderboardRequestInProgress = false; // Reset flag, as this is a form of leaderboard update
+
+                // Process leaderboard data received after game over
+                try {
+                    if (innerMessage.data && innerMessage.data.leaderboard && Array.isArray(innerMessage.data.leaderboard) && innerMessage.data.leaderboard.length > 0) { // Use innerMessage
+                        console.log("[MsgListener] Updating leaderboard with gameOverAck data:", innerMessage.data.leaderboard); // Use innerMessage
+                        leaderboard = JSON.parse(JSON.stringify(innerMessage.data.leaderboard)); // Use innerMessage
+                        if (leaderboard.length > 1) {
+                            leaderboard.sort((a, b) => a.rank - b.rank);
+                        }
+                        console.log("[MsgListener] Processed gameOverAck leaderboard data:", leaderboard);
+
+                        // Leaderboard screen is removed, no need to render
+                        // if (document.getElementById('leaderboard-screen').classList.contains('active')) {
+                        //     const activeTabButton = document.querySelector('.tab-button.active');
+                        //     const activeTab = activeTabButton ? activeTabButton.getAttribute('data-tab') : 'this-subreddit';
+                        //     const ackRenderData = { tab: activeTab, entries: leaderboard };
+                        //     console.log(`[MsgListener] Leaderboard screen active. Calling renderLeaderboard from gameOverAck for tab '${activeTab}' with:`, ackRenderData);
+                        //     renderLeaderboard(ackRenderData);
+                        // } else {
+                        //     console.log("[MsgListener] Leaderboard screen not active, data updated but not rendered immediately.");
+                        // }
+                    } else {
+                        console.warn("[MsgListener] No valid leaderboard data in gameOverAck.");
+                        // Optionally handle fallback if needed, but usually not necessary here
+                    }
+                } catch (error) {
+                    console.error("[MsgListener] Error processing gameOverAck leaderboard data:", error);
+                }
+                break;
+
+            case 'leaderboardUpdate': // Handler for realtime updates
+                console.log("[MsgListener] Handling leaderboardUpdate (realtime) message:", innerMessage.data); // Use innerMessage
+                leaderboardRequestInProgress = false; // Reset flag as this is an update
+
+                try {
+                    if (innerMessage.data && innerMessage.data.entries && Array.isArray(innerMessage.data.entries)) { // Use innerMessage
+                        console.log("[MsgListener] Updating leaderboard with realtime data:", innerMessage.data.entries); // Use innerMessage
+                        leaderboard = JSON.parse(JSON.stringify(innerMessage.data.entries)); // Use innerMessage
+                        if (leaderboard.length > 1) {
+                            leaderboard.sort((a, b) => a.rank - b.rank); // Ensure sorted
+                        }
+                        console.log("[MsgListener] Processed realtime leaderboard data:", leaderboard);
+
+                        // Leaderboard screen is removed, no need to render
+                        // if (document.getElementById('leaderboard-screen').classList.contains('active')) {
+                        //     const activeTabButton = document.querySelector('.tab-button.active');
+                        //     const activeTab = activeTabButton ? activeTabButton.getAttribute('data-tab') : 'this-subreddit';
+                        //     const updateRenderData = { tab: activeTab, entries: leaderboard };
+                        //     console.log(`[MsgListener] Leaderboard screen active. Calling renderLeaderboard from leaderboardUpdate for tab '${activeTab}' with:`, updateRenderData);
+                        //     renderLeaderboard(updateRenderData);
+                        // } else {
+                        //     console.log("[MsgListener] Leaderboard screen not active, realtime data updated but not rendered immediately.");
+                        // }
+                    } else {
+                        console.warn("[MsgListener] No valid entries data in leaderboardUpdate.");
+                    }
+                } catch (error) {
+                    console.error("[MsgListener] Error processing leaderboardUpdate data:", error);
+                }
                 break;
 
             case 'requestImageUrl':
-                console.log("Received requestImageUrl message:", message.data);
+                console.log("Received requestImageUrl message:", innerMessage.data); // Use innerMessage
                 // Handle the image URL request
-                if (message.data && message.data.itemType) {
-                    const { itemType } = message.data;
+                if (innerMessage.data && innerMessage.data.itemType) { // Use innerMessage
+                    const { itemType } = innerMessage.data; // Use innerMessage
 
                     // Show a dialog to prompt the user for an image URL
                     showImageUrlDialog(itemType);
@@ -1921,9 +1959,9 @@ window.addEventListener('message', async (event) => {
                 break;
 
             case 'customWeaponsData':
-                console.log("Received customWeaponsData message:", message.data);
+                console.log("Received customWeaponsData message:", innerMessage.data); // Use innerMessage
                 // Handle the custom weapons data
-                handleCustomWeaponsData(message.data);
+                handleCustomWeaponsData(innerMessage.data); // Use innerMessage
                 break;
 
             // Keep other cases from the original code
@@ -1941,10 +1979,10 @@ window.addEventListener('message', async (event) => {
                 updatedAt: "2025-03-19T07:00:07.239Z"
             }];
 
-            // If leaderboard is currently shown, update it
-            if (document.getElementById('leaderboard-screen').classList.contains('active')) {
-                renderLeaderboard(leaderboard);
-            }
+            // Leaderboard screen is removed, no need to render
+            // if (document.getElementById('leaderboard-screen').classList.contains('active')) {
+            //     renderLeaderboard(leaderboard);
+            // }
         }
     }
 });
@@ -3244,7 +3282,6 @@ function initGame() {
         if (currentUsername) {
             instructions.innerHTML = `
                 <div class="instructions-container">
-                    <div class="username-display">Playing as <span class="username">${currentUsername}</span></div>
                     <div class="start-prompt">Click to start!</div>
                 </div>
             `;
@@ -3284,69 +3321,22 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    // Set up back buttons for navigation
-    const backFromLeaderboardBtn = document.getElementById('back-from-leaderboard-btn');
-    if (backFromLeaderboardBtn) {
-        backFromLeaderboardBtn.addEventListener('click', function () {
-            // Hide leaderboard screen
-            document.getElementById('leaderboard-screen').classList.remove('active');
+    // --- Consolidated Initialization ---
 
-            // Show menu screen
-            const menuScreen = document.getElementById('menu-screen');
-            if (menuScreen) {
-                menuScreen.classList.add('active');
-            }
-        });
-    }
-
-    // Set up weapon selection back button
-    const backFromWeaponsBtn = document.getElementById('back-from-weapons-btn');
-    if (backFromWeaponsBtn) {
-        backFromWeaponsBtn.addEventListener('click', function () {
-            // Hide weapons screen
-            document.getElementById('weapon-selection-screen').classList.remove('active');
-
-            // Show menu screen
-            const menuScreen = document.getElementById('menu-screen');
-            if (menuScreen) {
-                menuScreen.classList.add('active');
-            }
-        });
-    }
-
-    if (startGameWithWeaponsBtn) {
-        startGameWithWeaponsBtn.addEventListener('click', startGameWithWeapons);
-    }
-
-    const backFromBadgesBtn = document.getElementById('back-from-badges-btn');
-    if (backFromBadgesBtn) {
-        backFromBadgesBtn.addEventListener('click', function () {
-            // Hide badges screen
-            document.getElementById('badges-screen').classList.remove('active');
-
-            // Show menu screen
-            const menuScreen = document.getElementById('menu-screen');
-            if (menuScreen) {
-                menuScreen.classList.add('active');
-            }
-        });
-    }
-});
-
-document.addEventListener('DOMContentLoaded', () => {
-    // Initialize menu buttons
+    // Select all necessary elements
     const startBtn = document.getElementById('start-btn');
     const leaderboardBtn = document.getElementById('leaderboard-btn');
     const badgesBtn = document.getElementById('badges-btn');
     const weaponsBtn = document.getElementById('weapons-btn');
-    const howToPlayBtn = document.getElementById('how-to-play-btn');
+    const howToPlayBtn = document.getElementById('how-to-play-btn'); // Added
     const backFromWeaponsBtn = document.getElementById('back-from-weapons-btn');
     const backFromBadgesBtn = document.getElementById('back-from-badges-btn');
     const backFromLeaderboardBtn = document.getElementById('back-from-leaderboard-btn');
     const startGameWithWeaponsBtn = document.getElementById('start-game-with-weapons-btn');
-    const nextToBallBtn = document.getElementById('next-to-ball-btn');
-    const backToPaddleBtn = document.getElementById('back-to-paddle-btn');
+    const nextToBallBtn = document.getElementById('next-to-ball-btn'); // Added
+    const backToPaddleBtn = document.getElementById('back-to-paddle-btn'); // Added
 
+    // Screen Navigation Helpers
     function hideAllScreens() {
         document.querySelectorAll('.screen').forEach(screen => {
             screen.classList.remove('active');
@@ -3355,57 +3345,89 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function showMenu() {
         hideAllScreens();
-        document.getElementById('menu-screen').classList.add('active');
+        const menuScreen = document.getElementById('menu-screen');
+        if (menuScreen) {
+            menuScreen.classList.add('active');
+        }
     }
 
-    function startGame() {
+    function startGame() { // Renamed from startGameWithWeapons for clarity
         hideAllScreens();
-        document.getElementById('game-screen').classList.add('active');
-        initGame(); // Initialize game after showing screen
+        const gameScreen = document.getElementById('game-screen');
+        if (gameScreen) {
+            gameScreen.classList.add('active');
+            initGame(); // Initialize game after showing screen
+        }
     }
 
-    function showLeaderboard() {
-        hideAllScreens();
-        document.getElementById('leaderboard-screen').classList.add('active');
-        refreshLeaderboard(); // Fetch fresh leaderboard data
-    }
+    // function showLeaderboard() { // Functionality removed
+    //     hideAllScreens();
+    //     const leaderboardScreen = document.getElementById('leaderboard-screen');
+    //     if (leaderboardScreen) {
+    //         leaderboardScreen.classList.add('active');
+    //         // Ensure screen is active before fetching/rendering
+    //         console.log("[UI] Leaderboard screen activated.");
+    //         refreshLeaderboard(); // Fetch fresh leaderboard data AFTER activating screen
+    //     } else {
+    //         console.error("[UI] Leaderboard screen element not found!");
+    //     }
+    // }
 
     function showBadges() {
         hideAllScreens();
-        document.getElementById('badges-screen').classList.add('active');
+        const badgesScreen = document.getElementById('badges-screen');
+        if (badgesScreen) {
+            badgesScreen.classList.add('active');
+        }
     }
 
-    function showWeapons() {
+    function showPaddleSelection() { // Renamed from showWeapons
         hideAllScreens();
-        document.getElementById('paddle-selection-screen').classList.add('active');
-        populatePaddleSelection();
+        const paddleScreen = document.getElementById('paddle-selection-screen');
+        if (paddleScreen) {
+            paddleScreen.classList.add('active');
+            populatePaddleSelection();
+        }
     }
 
-    // Event listeners for menu buttons
-    startBtn?.addEventListener('click', () => {
+    function showBallSelection() {
         hideAllScreens();
-        document.getElementById('paddle-selection-screen').classList.add('active');
-        populatePaddleSelection();
+        const ballScreen = document.getElementById('ball-selection-screen');
+        if (ballScreen) {
+            ballScreen.classList.add('active');
+            populateBallSelection();
+        }
+    }
+
+    // Attach Event Listeners
+    startBtn?.addEventListener('click', showPaddleSelection); // Go to paddle selection first
+    leaderboardBtn?.addEventListener('click', () => {
+        console.log("[UI] Leaderboard button clicked.");
+        showLeaderboard();
     });
-
-    leaderboardBtn?.addEventListener('click', showLeaderboard);
     badgesBtn?.addEventListener('click', showBadges);
-    weaponsBtn?.addEventListener('click', showWeapons);
-    backFromWeaponsBtn?.addEventListener('click', showMenu);
+    weaponsBtn?.addEventListener('click', showPaddleSelection); // Main weapons button also goes to paddle selection
+    howToPlayBtn?.addEventListener('click', showHowToPlayModal); // Added listener
+
+    // Back buttons
+    backFromWeaponsBtn?.addEventListener('click', showMenu); // Back from paddle selection goes to menu
     backFromBadgesBtn?.addEventListener('click', showMenu);
     backFromLeaderboardBtn?.addEventListener('click', showMenu);
-    startGameWithWeaponsBtn?.addEventListener('click', startGame);
-    nextToBallBtn?.addEventListener('click', () => {
-        hideAllScreens();
-        document.getElementById('ball-selection-screen').classList.add('active');
-        populateBallSelection();
-    });
-    backToPaddleBtn?.addEventListener('click', showWeapons);
 
-    // Initialize the menu screen
+    // Weapon selection flow buttons
+    nextToBallBtn?.addEventListener('click', showBallSelection);
+    backToPaddleBtn?.addEventListener('click', showPaddleSelection); // Back from ball selection goes to paddle selection
+
+    // Start game button (after selecting ball)
+    startGameWithWeaponsBtn?.addEventListener('click', startGame); // This button now starts the game
+
+    // Initialize Leaderboard Tabs
+    setupLeaderboardTabs();
+
+    // Show the initial screen
     showMenu();
 
-    // ...rest of the initialization code...
+    console.log("Consolidated DOMContentLoaded initialization complete.");
 });
 
 // Update start game function to ensure proper weapon initialization
@@ -3440,16 +3462,12 @@ function setupLeaderboardTabs() {
     });
 }
 
-// Initialize leaderboard on load
-document.addEventListener('DOMContentLoaded', () => {
-    setupLeaderboardTabs();
-    // ... rest of the initialization code ...
-});
 
 function refreshLeaderboard() {
     const now = Date.now();
-    if (leaderboardRequestInProgress || (now - lastLeaderboardRequestTime < LEADERBOARD_REQUEST_DEBOUNCE)) {
-        console.log("Leaderboard request already in progress or too recent");
+    // Only prevent concurrent requests, not requests shortly after completion
+    if (leaderboardRequestInProgress) {
+        console.log("[Leaderboard] Request already in progress. Skipping.");
         return;
     }
 
@@ -3460,80 +3478,107 @@ function refreshLeaderboard() {
     const activeTab = document.querySelector('.tab-button.active');
     const tab = activeTab ? activeTab.getAttribute('data-tab') : 'this-subreddit';
 
+    console.log(`[Leaderboard] Requesting data for tab: ${tab}`);
+    // Don't show loading here; let renderLeaderboard handle UI updates upon receiving data or error
+
     postWebViewMessage({
         type: 'fetchLeaderboard',
         data: { tab }
     }).catch(error => {
-        console.error("Failed to fetch leaderboard:", error);
+        console.error(`[Leaderboard] Failed to send fetchLeaderboard message for tab ${tab}:`, error);
+        // Show error in UI if sending the message fails
+        showLeaderboardError(`Could not request leaderboard data. Please check connection.`, tab);
         leaderboardRequestInProgress = false;
     });
 }
 
 function renderLeaderboard(data) {
+    // This function now handles rendering data, empty state, or implicitly showing loading/error states
+    // by clearing the content if data is invalid or not yet available.
+    // The actual loading/error messages are handled by showLeaderboardLoading/showLeaderboardError called elsewhere.
+
+    console.log(`[Render] Received data for rendering:`, data);
+
+    // Ensure data structure is valid before proceeding
     if (!data || !data.tab || !Array.isArray(data.entries)) {
-        console.error('Invalid leaderboard data received:', data);
+        console.error('[Render] Invalid or incomplete leaderboard data received. Cannot render.', data);
+        // Don't show an error here directly, assume showLeaderboardError was called if fetch failed.
+        // If data structure is wrong from a successful fetch, the console error is the primary feedback.
         return;
     }
 
     const { tab, entries } = data;
-    const tabBody = document.getElementById(`${tab}-leaderboard-body`);
+    const tabBodyId = `${tab}-leaderboard-body`;
+    const tabBody = document.getElementById(tabBodyId);
+
+    // Critical check: Ensure the target element exists before manipulating
     if (!tabBody) {
-        console.error('Could not find leaderboard body element for tab:', tab);
+        console.error(`[Render] CRITICAL: Could not find leaderboard body element with ID: #${tabBodyId}. Aborting render.`);
+        // Optionally, show a general UI error if this happens, as it indicates an HTML/JS mismatch
+        // showError("Internal UI Error: Leaderboard display area not found.");
         return;
     }
 
-    // Clear existing entries
+    console.log(`[Render] Found target element: #${tabBodyId}. Clearing and rendering for tab '${tab}'.`);
+
+    // Clear previous content (loading, error, or old data)
     tabBody.innerHTML = '';
 
     // Handle empty leaderboard
-    if (!entries || entries.length === 0) {
+    if (entries.length === 0) {
+        console.log(`[Render] Leaderboard for tab '${tab}' is empty. Displaying empty state.`);
         const emptyRow = document.createElement('tr');
         const emptyCell = document.createElement('td');
-        emptyCell.colSpan = tab === 'all-subreddits' ? 4 : 3;
+        // Adjust colspan: 4 for 'this-subreddit', 5 for 'all-subreddits'
+        emptyCell.colSpan = tab === 'all-subreddits' ? 5 : 4;
         emptyCell.className = 'chalk-text chalk-white empty-state';
         emptyCell.textContent = 'No scores yet! Be the first to play!';
         emptyRow.appendChild(emptyCell);
         tabBody.appendChild(emptyRow);
-        return;
+        console.log(`[Render] Appended empty state row to #${tabBodyId}`);
+        return; // Finished rendering empty state
     }
 
-    // Add entries to the table
+    // Process and render entries
+    console.log(`[Render] Processing ${entries.length} entries for tab '${tab}'...`);
+    let rowsHTML = ''; // Build HTML string for efficiency
     entries.forEach((entry, index) => {
-        const row = document.createElement('tr');
-        row.className = entry.username === currentUsername ? 'current-user' : '';
-
-        // Rank cell with medal
-        const rankCell = document.createElement('td');
-        let rankText = (index + 1).toString();
-        if (index === 0) rankText = '🥇 ' + rankText;
-        else if (index === 1) rankText = '🥈 ' + rankText;
-        else if (index === 2) rankText = '🥉 ' + rankText;
-        rankCell.textContent = rankText;
-        rankCell.className = 'chalk-text chalk-yellow';
-        row.appendChild(rankCell);
-
-        // Username cell
-        const usernameCell = document.createElement('td');
-        usernameCell.textContent = entry.username;
-        usernameCell.className = 'chalk-text chalk-white';
-        row.appendChild(usernameCell);
-
-        // Score cell
-        const scoreCell = document.createElement('td');
-        scoreCell.textContent = entry.score.toLocaleString();
-        scoreCell.className = 'chalk-text chalk-yellow';
-        row.appendChild(scoreCell);
-
-        // Add subreddit cell for all-subreddits tab
-        if (tab === 'all-subreddits') {
-            const subredditCell = document.createElement('td');
-            subredditCell.textContent = entry.subreddit || 'Unknown';
-            subredditCell.className = 'chalk-text chalk-white';
-            row.appendChild(subredditCell);
+        if (!entry || typeof entry !== 'object') {
+            console.warn(`[Render] Skipping invalid entry at index ${index}:`, entry);
+            return; // Skip invalid entries
         }
 
-        tabBody.appendChild(row);
+        // Safely access properties with defaults
+        const rank = entry.rank || (index + 1);
+        const username = entry.username || 'Unknown';
+        const score = typeof entry.score === 'number' ? entry.score.toLocaleString() : 'N/A';
+        const date = entry.updatedAt ? formatDate(entry.updatedAt) : 'N/A';
+        const subreddit = entry.subreddit || 'N/A';
+
+        const isCurrentUserClass = entry.username === currentUsername ? 'current-user' : '';
+        let rankDisplay = rank.toString();
+        if (rank === 1) rankDisplay = '🥇 ' + rankDisplay;
+        else if (rank === 2) rankDisplay = '🥈 ' + rankDisplay;
+        else if (rank === 3) rankDisplay = '🥉 ' + rankDisplay;
+
+        // Log processed entry details
+        // console.log(`[Render] Entry ${index}: Rank=${rank}, User=${username}, Score=${score}, Date=${date}, Subreddit=${subreddit}`);
+
+        // Build row HTML
+        rowsHTML += `<tr class="${isCurrentUserClass}">`;
+        rowsHTML += `<td class="chalk-text chalk-yellow">${rankDisplay}</td>`;
+        rowsHTML += `<td class="chalk-text chalk-white">${username} ${entry.username === currentUsername ? '<span class="current-user-tag">(You)</span>' : ''}</td>`;
+        rowsHTML += `<td class="chalk-text chalk-yellow">${score}</td>`;
+        if (tab === 'all-subreddits') {
+            rowsHTML += `<td class="chalk-text chalk-white">${subreddit}</td>`;
+        }
+        rowsHTML += `<td class="chalk-text chalk-white date-col">${date}</td>`;
+        rowsHTML += `</tr>`;
     });
+
+    console.log(`[Render] Generated HTML for ${entries.length} valid rows.`);
+    tabBody.innerHTML = rowsHTML; // Update DOM with all rows at once
+    console.log(`[Render] Successfully updated #${tabBodyId} with new rows.`);
 }
 
 // Initialize when document is ready
@@ -3575,28 +3620,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // Show menu screen initially
     hideAllScreens();
     document.getElementById('menu-screen').classList.add('active');
-});
-
-// Scheduled Leaderboard community post
-document.addEventListener('DOMContentLoaded', () => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const dataParam = urlParams.get('data');
-
-    if (dataParam) {
-        const data = JSON.parse(decodeURIComponent(dataParam));
-
-        if (window.location.pathname.includes('leaderboard.html')) {
-            renderLeaderboard(data);
-        } else if (window.location.pathname.includes('top-player.html')) {
-            renderTopPlayer(data);
-        }
-    }
-
-    const dateElement = document.getElementById('current-date');
-    if (dateElement) {
-        const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-        dateElement.textContent = new Date().toLocaleDateString(undefined, options);
-    }
 });
 
 // Add these functions after the gameOver function
