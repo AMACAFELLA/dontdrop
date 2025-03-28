@@ -381,6 +381,31 @@ const DontDropGame = ({ context }: { context: Devvit.Context }) => {
              }
              break;
            }
+           case 'defaultImageUpdated': {
+             // Extract itemType and imageDataUrl from the message
+             const { itemType, imageDataUrl } = message.data;
+             const userId = context.userId; // Get the user ID from context
+
+             if (!userId || !imageDataUrl) { // Also check for imageDataUrl
+               console.error('Cannot schedule customization post: User ID not found in context.');
+               break;
+             }
+
+             console.log(`Received defaultImageUpdated for ${itemType} from user ${userId}. Scheduling post.`);
+
+             // Schedule a job to create the post after a short delay (e.g., 60 seconds)
+             await context.scheduler.runJob({
+               name: 'createCustomizationPost', // Name of the job handler
+               data: {
+                 userId: userId,
+                 itemType: itemType, // 'paddle' or 'ball'
+                 imageDataUrl: imageDataUrl, // Pass image data URL to the job
+               },
+               runAt: new Date(Date.now() + 60 * 1000), // Run 60 seconds from now
+             });
+             console.log(`Scheduled customization post job for user ${userId}.`);
+             break;
+           }
         }
       } catch (error) {
         console.error('Error handling message:', error);
@@ -498,82 +523,74 @@ Devvit.addSchedulerJob({
           </blocks>
         ),
       });
-      console.log("Posted weekly leaderboard update.");
+      console.log('Weekly leaderboard post created successfully.');
     } catch (error) {
-      console.error('Error posting weekly leaderboard:', error);
+      console.error('Error running weekly leaderboard job:', error);
     }
-  }
+  },
 });
 
-// Top 5 player announcement types and functions remain the same
-type TopPlayerData = {
-  username: string;
-  score: number;
-  rank: number;
-  previousPlayer?: {
-    username: string;
-    score: number;
-  };
-};
-
-// Scheduler job to announce new top 5 player remains the same
+// Job to announce a new top player - USE THE SERVICE
 Devvit.addSchedulerJob({
   name: 'announce_top_player',
   onRun: async (event, context) => {
+    // Add type assertion for event.data
+    const { username, score, rank, previousPlayer } = event.data as {
+        username: string;
+        score: number;
+        rank: number;
+        previousPlayer: { username: string; score: number } | null;
+    };
+
+    if (!username || !score || !rank) {
+      console.error('Missing data in announce_top_player job:', event.data);
+      return;
+    }
+
     try {
-      const data = event.data as TopPlayerData;
-      const playerData = encodeURIComponent(JSON.stringify(data));
       const subreddit = await context.reddit.getCurrentSubreddit();
+      if (!subreddit) {
+        console.error('Could not get current subreddit for announcement.');
+        return;
+      }
 
-      await context.reddit.submitPost({
-        title: `🎮 ${data.username} just reached #${data.rank} on Don't Drop! 🏆`,
+      let postTitle = `🏆 New Top Player Alert! u/${username} reached Rank #${rank} with ${score} points!`;
+      let postBody = `Congratulations to **u/${username}** for reaching **Rank #${rank}** on the global Don't Drop leaderboard with an amazing score of **${score}**! 🎉`;
+
+      if (previousPlayer && previousPlayer.username) {
+        postTitle = `👑 u/${username} takes Rank #${rank} with ${score} points!`;
+        postBody = `**u/${username}** has claimed **Rank #${rank}** on the global Don't Drop leaderboard with a score of **${score}**, surpassing u/${previousPlayer.username} (who had ${previousPlayer.score})! 🚀\n\nCan you beat their score?`;
+      }
+
+      // For text posts, omit 'kind' and 'url', use 'text' for the body
+      const post = await context.reddit.submitPost({
+        title: postTitle,
         subredditName: subreddit.name,
-        preview: (
-          <blocks height="regular">
-             {/* Ensure this URL points to a publicly accessible HTML file */}
-            <webview url={`https://raw.githubusercontent.com/AMACAFELLA/dontdrop/main/webroot/top-player.html?data=${playerData}`} />
-          </blocks>
-        ),
+        text: postBody,
       });
-      console.log(`Posted announcement for ${data.username} reaching rank ${data.rank}`);
+
+      console.log(`Successfully created announcement post for u/${username}.`);
+
     } catch (error) {
-      console.error('Error posting top player announcement:', error);
+      console.error(`Error creating announcement post for u/${username}:`, error);
     }
   },
 });
 
-// AppInstall Trigger remains the same
-Devvit.addTrigger({
-  event: 'AppInstall',
-  onEvent: async (_, context) => {
-    try {
-       const jobId = await context.scheduler.runJob({
-         cron: '0 0 * * 0', // Every Sunday at midnight UTC
-         name: 'weekly_leaderboard_update',
-         data: {},
-       });
-       await context.redis.set(REDIS_KEYS.WEEKLY_JOB, jobId);
-       console.log("Scheduled weekly leaderboard job with ID:", jobId);
-    } catch (error) {
-        console.error("Failed to schedule weekly job:", error);
-    }
-  },
-});
-
-// Clear Data Form and Menu Item - USE THE SERVICE
+// Form for clearing data
 const clearDataForm = Devvit.createForm(
   {
-    title: "Clear Don't Drop Game Data",
+    title: "Clear Game Data",
     fields: [
       {
-        type: "select",
         name: "dataType",
-        label: "Select data to clear",
+        label: "Select Data to Clear:",
+        type: "select",
         options: [
-          { label: "Leaderboard Only", value: "leaderboard" },
-          // { label: "Current User Data", value: "user" }, // User data clearing might need rework if USER_PREFIX is removed
+          { label: "Leaderboard", value: "leaderboard" },
+          // { label: "User Data", value: "user" },
           // { label: "Custom Items", value: "items" },
-          // { label: "All Game Data", value: "all" } // 'all' might be misleading now
+          // { label: "All Data", value: "all" }
         ],
         defaultValue: ["leaderboard"]
       }
@@ -624,3 +641,67 @@ Devvit.addMenuItem({
 });
 
 export default Devvit;
+
+// Job to create a post announcing a user's customization
+Devvit.addSchedulerJob({
+  name: 'createCustomizationPost',
+  onRun: async (event, context) => {
+    // Add type assertion for event.data, including imageDataUrl
+    const { userId, itemType, imageDataUrl } = event.data as {
+        userId: string;
+        itemType: 'paddle' | 'ball';
+        imageDataUrl: string;
+    };
+
+    if (!userId || !itemType || !imageDataUrl) {
+      console.error('Missing data in createCustomizationPost job:', event.data);
+      return;
+    }
+
+    try {
+      const user = await context.reddit.getUserById(userId);
+      if (!user || !user.username) {
+        console.error(`Could not find user for ID: ${userId}`);
+        return;
+      }
+      const username = user.username;
+
+      const subreddit = await context.reddit.getCurrentSubreddit();
+      if (!subreddit) {
+        console.error('Could not get current subreddit for customization post.');
+        return;
+      }
+
+      const postTitle = `u/${username} customized their ${itemType}! 🔥`;
+      const commentBody = `Check out the new look for u/${username}'s ${itemType}!\n\nWhat does yours look like? Show it off in your own post or update your default!`;
+
+      // 1. Upload the image data URL to Reddit media
+      console.log(`Uploading image data for ${username}'s ${itemType}...`);
+      const mediaResponse = await context.media.upload({
+          url: imageDataUrl,
+          type: 'image'
+      });
+      const redditMediaUrl = mediaResponse.mediaUrl;
+      console.log(`Image uploaded successfully: ${redditMediaUrl}`);
+
+      // 2. Submit an image post (omit 'kind', let it infer from URL)
+      const post = await context.reddit.submitPost({
+        title: postTitle,
+        subredditName: subreddit.name,
+        // kind: 'image', // Omit kind, let it infer
+        url: redditMediaUrl, // Use the URL returned by media upload
+      });
+      console.log(`Successfully created customization image post for u/${username}: ${post.id}`);
+
+      // 3. (Optional) Add the descriptive text as a comment using submitComment
+      await context.reddit.submitComment({
+          id: post.id, // Use 'id' for the post ID
+          text: commentBody,
+      });
+      console.log(`Added descriptive comment to post ${post.id}`);
+
+    } catch (error) {
+      console.error(`Error creating customization post for user ${userId}:`, error);
+    }
+  },
+});

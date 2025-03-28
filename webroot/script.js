@@ -2817,11 +2817,15 @@ function showDefaultImageUploadModal(itemType) {
                         weapons.paddles.default.image = imageDataUrl;
                         populatePaddleSelection(); // Refresh UI
                         showAward('gold', 'Default paddle image updated!');
+                        // Notify backend about the update, including the image data
+                        postWebViewMessage({ type: 'defaultImageUpdated', data: { itemType: 'paddle', imageDataUrl: imageDataUrl } });
                     } else if (itemType === 'ball') {
                         localStorage.setItem('customDefaultBallImage', imageDataUrl);
                         weapons.balls.default.image = imageDataUrl;
                         populateBallSelection(); // Refresh UI
                         showAward('gold', 'Default ball image updated!');
+                        // Notify backend about the update, including the image data
+                        postWebViewMessage({ type: 'defaultImageUpdated', data: { itemType: 'ball', imageDataUrl: imageDataUrl } });
                     }
                 } catch (error) {
                     console.error("Error saving image to localStorage:", error);

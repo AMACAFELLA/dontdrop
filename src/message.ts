@@ -74,6 +74,7 @@ type WebViewMessagePayloadMap = {
   requestImageUpload: { itemType: 'weapon' | 'ball' };
   uploadImage: { imageUrl: string; itemType: 'weapon' | 'ball'; itemName: string };
   clearRedisData: { dataType: 'leaderboard' | 'user' | 'items' | 'all' }; // Assuming this might be needed later
+  defaultImageUpdated: { itemType: 'paddle' | 'ball'; imageDataUrl: string }; // Added imageDataUrl
 };
 
 /** Messages from the web view to Devvit */
