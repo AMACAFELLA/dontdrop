@@ -105,6 +105,21 @@ const weapons = {
 let selectedPaddle = weapons.paddles.default;
 let selectedBall = weapons.balls.default;
 
+// Store original default images
+const originalDefaultPaddleImage = weapons.paddles.default.image;
+const originalDefaultBallImage = weapons.balls.default.image;
+
+// Load custom default images from localStorage if they exist
+const savedDefaultPaddleImage = localStorage.getItem('customDefaultPaddleImage');
+if (savedDefaultPaddleImage) {
+    weapons.paddles.default.image = savedDefaultPaddleImage;
+}
+const savedDefaultBallImage = localStorage.getItem('customDefaultBallImage');
+if (savedDefaultBallImage) {
+    weapons.balls.default.image = savedDefaultBallImage;
+}
+
+
 // Keep track of our known reddit username
 let currentUsername = ''; // This will be set by the server with the real Reddit username
 let confirmedUsername = false; // Flag to indicate we have confirmed the username
@@ -2691,160 +2706,31 @@ function populatePaddleSelection() {
     // Clear existing content
     paddleContainer.innerHTML = '';
 
+    // Add standard section title (Keep this as per the image)
     const standardSectionTitle = document.createElement('h3');
     standardSectionTitle.className = 'section-title'; // Assuming a class for styling
     standardSectionTitle.textContent = 'Standard Paddles';
+    // Note: We don't append this title yet, it might be part of the container's header in HTML.
+    // If the title needs to be *above* the grid, it should be handled in the HTML structure
+    // or appended before the grid items if the container is just the grid.
+    // For now, let's assume the title is handled elsewhere or we add it just before the grid items.
+    // paddleContainer.appendChild(standardSectionTitle); // Append if needed here
 
-    // --- Create the "Create Custom Paddle" button element ---
-    const createCustomButton = document.createElement('div');
-    createCustomButton.className = 'create-custom-weapon weapon-item'; // Add weapon-item for grid layout
-    createCustomButton.innerHTML = `
-        <div class="create-custom-content">
-            <div class="create-icon">+</div>
-            <h3>Create Custom Paddle</h3>
-            <p>Upload your own paddle image</p>
-        </div>
-    `;
-
-    createCustomButton.addEventListener('click', () => {
-        // Create and trigger a hidden file input
-        const fileInput = document.createElement('input');
-        fileInput.type = 'file';
-        fileInput.accept = 'image/png, image/jpeg, image/gif';
-        fileInput.style.display = 'none';
-        document.body.appendChild(fileInput);
-
-        // Trigger the file dialog
-        fileInput.click();
-
-        // Handle file selection
-        fileInput.addEventListener('change', (e) => {
-            if (fileInput.files && fileInput.files[0]) {
-                const file = fileInput.files[0];
-
-                // Create upload modal
-                const modal = document.createElement('div');
-                modal.className = 'modal';
-                modal.innerHTML = `
-                    <div class="modal-content custom-item-modal">
-                        <div class="modal-header">
-                            <h2>Create Custom Paddle</h2>
-                            <button class="modal-close">&times;</button>
-                        </div>
-                        <div class="modal-body">
-                            <div class="upload-form">
-                                <div class="form-group">
-                                    <label for="paddle-name">Name your paddle:</label>
-                                    <input type="text" id="paddle-name" placeholder="My Custom Paddle" maxlength="20" class="custom-input">
-                                </div>
-                                <div class="preview-container">
-                                    <img id="paddle-preview" src="" alt="Preview" style="max-width: 100%; max-height: 200px; border-radius: 8px; margin-top: 10px;">
-                                </div>
-                                <div class="upload-actions">
-                                    <button id="confirm-upload" class="primary-button">Create Paddle</button>
-                                    <button id="cancel-upload" class="secondary-button">Cancel</button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                `;
-
-                document.body.appendChild(modal);
-
-                // Show the modal
-                setTimeout(() => modal.classList.add('active'), 10);
-
-                // Setup preview
-                const reader = new FileReader();
-                reader.onload = (event) => {
-                    const paddlePreview = document.getElementById('paddle-preview');
-                    paddlePreview.src = event.target.result;
-                };
-                reader.readAsDataURL(file);
-
-                // Modal close button
-                const closeBtn = modal.querySelector('.modal-close');
-                const cancelBtn = modal.querySelector('#cancel-upload');
-
-                const closeModal = () => {
-                    modal.classList.remove('active');
-                    setTimeout(() => modal.remove(), 300);
-                    // Only remove fileInput if it's still attached
-                    if (fileInput.parentNode === document.body) {
-                        document.body.removeChild(fileInput);
-                    }
-                };
-
-                closeBtn.addEventListener('click', closeModal);
-                cancelBtn.addEventListener('click', closeModal);
-
-                // Confirm upload
-                const confirmBtn = modal.querySelector('#confirm-upload');
-                confirmBtn.addEventListener('click', () => {
-                    const paddleName = document.getElementById('paddle-name').value.trim() || 'Custom Paddle';
-
-                    // Convert the file to a data URL for upload
-                    const reader = new FileReader();
-                    reader.onload = (event) => {
-                        const imageData = event.target.result;
-
-                        // Show loading state
-                        confirmBtn.disabled = true;
-                        confirmBtn.textContent = 'Creating...';
-
-                        // Send to server
-                        postWebViewMessage({
-                            type: 'imageUploaded',
-                            data: {
-                                imageUrl: imageData,
-                                itemType: 'weapon', // Changed from 'paddle' if needed, check server expectation
-                                itemName: paddleName
-                            }
-                        }).then(() => {
-                            // Show success and close modal
-                            showAward('gold', 'Custom paddle created successfully!');
-                            closeModal();
-
-                            // Request updated custom weapons (which will repopulate the selection)
-                            requestCustomWeapons(); // Assuming this triggers a repopulation
-                        }).catch(error => {
-                            console.error('Error uploading image:', error);
-                            confirmBtn.disabled = false;
-                            confirmBtn.textContent = 'Create Paddle';
-                            showError('Failed to create custom paddle. Please try again.');
-                        });
-                    };
-                    reader.readAsDataURL(file);
-                });
-            } else {
-                // Clean up the input element if no file was selected or dialog cancelled
-                if (fileInput.parentNode === document.body) {
-                    document.body.removeChild(fileInput);
-                }
-            }
-        });
-        // Add error handling for file input click itself if needed
-        fileInput.addEventListener('error', (err) => {
-            console.error("Error with file input:", err);
-            if (fileInput.parentNode === document.body) {
-                document.body.removeChild(fileInput);
-            }
-            showError("Could not open file dialog.");
-        });
-    });
-    // --- End Create Custom Paddle Button ---
-
-    // Append the "Create Custom Paddle" button first to the grid container
-    paddleContainer.appendChild(createCustomButton);
+    // Removed the standalone "Create Custom Paddle" button and its logic.
+    // Upload functionality will be added directly to the default paddle item below.
 
     // Populate standard paddles
     Object.entries(weapons.paddles).forEach(([key, paddle]) => {
         const isUnlocked = highScore >= paddle.unlockScore;
         const isSelected = selectedPaddle === paddle;
+        const isDefault = key === 'default';
+        const isCustomized = isDefault && paddle.image !== originalDefaultPaddleImage;
 
         const paddleElement = document.createElement('div');
         paddleElement.className = `weapon-item ${isUnlocked ? 'unlocked' : 'locked'} ${isSelected ? 'selected' : ''}`;
-        paddleElement.innerHTML = `
+
+        // Base HTML
+        let innerHTML = `
             <img src="${paddle.image}" alt="${paddle.name}">
             <div class="weapon-info">
                 <h3>${paddle.name}</h3>
@@ -2856,16 +2742,154 @@ function populatePaddleSelection() {
             </div>
         `;
 
+        // Add customization buttons for the default paddle
+        if (isDefault) {
+            innerHTML += `
+                <div class="default-customize-controls">
+                    <button class="change-image-btn small-button" data-item-type="paddle">Change Image</button>
+                    ${isCustomized ? '<button class="revert-image-btn small-button" data-item-type="paddle">Revert</button>' : ''}
+                </div>
+            `;
+        }
+
+        paddleElement.innerHTML = innerHTML;
+
         // Add tooltip
         paddleElement.appendChild(createWeaponTooltip(paddle));
 
+        // Add event listeners
         if (isUnlocked) {
-            paddleElement.addEventListener('click', () => selectPaddle(paddle));
+            // Make the main element selectable (unless clicking a button inside)
+            paddleElement.addEventListener('click', (e) => {
+                if (!e.target.closest('button')) { // Don't select if clicking a button
+                    selectPaddle(paddle);
+                }
+            });
+
+            // Add listeners for customize buttons if it's the default paddle
+            if (isDefault) {
+                const changeBtn = paddleElement.querySelector('.change-image-btn');
+                if (changeBtn) {
+                    changeBtn.addEventListener('click', () => showDefaultImageUploadModal('paddle'));
+                }
+
+                const revertBtn = paddleElement.querySelector('.revert-image-btn');
+                if (revertBtn) {
+                    revertBtn.addEventListener('click', () => revertDefaultPaddleImage());
+                }
+            }
         }
 
         paddleContainer.appendChild(paddleElement);
     });
 }
+
+// --- Implementation for Default Image Customization ---
+
+function showDefaultImageUploadModal(itemType) {
+    // Create and trigger a hidden file input
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.accept = 'image/png, image/jpeg, image/gif'; // Accept common image types
+    fileInput.style.display = 'none';
+    document.body.appendChild(fileInput);
+
+    // Handle file selection
+    fileInput.addEventListener('change', (e) => {
+        if (fileInput.files && fileInput.files[0]) {
+            const file = fileInput.files[0];
+            const reader = new FileReader();
+
+            reader.onload = (event) => {
+                const imageDataUrl = event.target.result;
+
+                try {
+                    // Validate if it's a reasonable size (e.g., < 5MB) - optional
+                    if (imageDataUrl.length > 5 * 1024 * 1024) {
+                        showError("Image size is too large. Please use an image under 5MB.");
+                        document.body.removeChild(fileInput); // Clean up
+                        return;
+                    }
+
+                    // Save to localStorage and update weapon object
+                    if (itemType === 'paddle') {
+                        localStorage.setItem('customDefaultPaddleImage', imageDataUrl);
+                        weapons.paddles.default.image = imageDataUrl;
+                        populatePaddleSelection(); // Refresh UI
+                        showAward('gold', 'Default paddle image updated!');
+                    } else if (itemType === 'ball') {
+                        localStorage.setItem('customDefaultBallImage', imageDataUrl);
+                        weapons.balls.default.image = imageDataUrl;
+                        populateBallSelection(); // Refresh UI
+                        showAward('gold', 'Default ball image updated!');
+                    }
+                } catch (error) {
+                    console.error("Error saving image to localStorage:", error);
+                    showError("Failed to save image. Storage might be full.");
+                } finally {
+                    // Clean up the input element regardless of success/error
+                    if (fileInput.parentNode === document.body) {
+                        document.body.removeChild(fileInput);
+                    }
+                }
+            };
+
+            reader.onerror = (error) => {
+                console.error("Error reading file:", error);
+                showError("Failed to read the selected image file.");
+                if (fileInput.parentNode === document.body) {
+                    document.body.removeChild(fileInput);
+                }
+            };
+
+            reader.readAsDataURL(file); // Read file as Data URL
+        } else {
+            // Clean up if no file selected
+            if (fileInput.parentNode === document.body) {
+                document.body.removeChild(fileInput);
+            }
+        }
+    });
+
+    // Add error handling for file input click itself if needed
+    fileInput.addEventListener('error', (err) => {
+        console.error("Error with file input:", err);
+        if (fileInput.parentNode === document.body) {
+            document.body.removeChild(fileInput);
+        }
+        showError("Could not open file dialog.");
+    });
+
+    // Trigger the file dialog
+    fileInput.click();
+}
+
+function revertDefaultPaddleImage() {
+    try {
+        weapons.paddles.default.image = originalDefaultPaddleImage; // Revert object
+        localStorage.removeItem('customDefaultPaddleImage'); // Remove from storage
+        populatePaddleSelection(); // Refresh UI
+        showAward('info', 'Default paddle image reverted.');
+    } catch (error) {
+        console.error("Error reverting paddle image:", error);
+        showError("Failed to revert paddle image.");
+    }
+}
+
+function revertDefaultBallImage() {
+    try {
+        weapons.balls.default.image = originalDefaultBallImage; // Revert object
+        localStorage.removeItem('customDefaultBallImage'); // Remove from storage
+        populateBallSelection(); // Refresh UI
+        showAward('info', 'Default ball image reverted.');
+    } catch (error) {
+        console.error("Error reverting ball image:", error);
+        showError("Failed to revert ball image.");
+    }
+}
+
+// --- End Implementation ---
+
 
 function populateBallSelection() {
     const ballContainer = document.getElementById('ball-selection');
@@ -2878,156 +2902,21 @@ function populateBallSelection() {
     // Clear existing content
     ballContainer.innerHTML = '';
 
-    // --- Create the "Create Custom Ball" button element ---
-    const createCustomButton = document.createElement('div');
-    createCustomButton.className = 'create-custom-weapon weapon-item'; // Add weapon-item for grid layout
-    createCustomButton.innerHTML = `
-        <div class="create-custom-content">
-            <div class="create-icon">+</div>
-            <h3>Create Custom Ball</h3>
-            <p>Upload your own ball image</p>
-        </div>
-    `;
+    // Removed the standalone "Create Custom Ball" button and its logic.
+    // Upload functionality will be added directly to the default ball item below.
 
-    createCustomButton.addEventListener('click', () => {
-        // Create and trigger a hidden file input
-        const fileInput = document.createElement('input');
-        fileInput.type = 'file';
-        fileInput.accept = 'image/png, image/jpeg, image/gif';
-        fileInput.style.display = 'none';
-        document.body.appendChild(fileInput);
-
-        // Trigger the file dialog
-        fileInput.click();
-
-        // Handle file selection
-        fileInput.addEventListener('change', (e) => {
-            if (fileInput.files && fileInput.files[0]) {
-                const file = fileInput.files[0];
-
-                // Create upload modal
-                const modal = document.createElement('div');
-                modal.className = 'modal';
-                modal.innerHTML = `
-                    <div class="modal-content custom-item-modal">
-                        <div class="modal-header">
-                            <h2>Create Custom Ball</h2>
-                            <button class="modal-close">&times;</button>
-                        </div>
-                        <div class="modal-body">
-                            <div class="upload-form">
-                                <div class="form-group">
-                                    <label for="ball-name">Name your ball:</label>
-                                    <input type="text" id="ball-name" placeholder="My Custom Ball" maxlength="20" class="custom-input">
-                                </div>
-                                <div class="preview-container">
-                                    <img id="ball-preview" src="" alt="Preview" style="max-width: 100%; max-height: 200px; border-radius: 8px; margin-top: 10px;">
-                                </div>
-                                <div class="upload-actions">
-                                    <button id="confirm-upload" class="primary-button">Create Ball</button>
-                                    <button id="cancel-upload" class="secondary-button">Cancel</button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                `;
-
-                document.body.appendChild(modal);
-
-                // Show the modal
-                setTimeout(() => modal.classList.add('active'), 10);
-
-                // Setup preview
-                const reader = new FileReader();
-                reader.onload = (event) => {
-                    const ballPreview = document.getElementById('ball-preview');
-                    ballPreview.src = event.target.result;
-                };
-                reader.readAsDataURL(file);
-
-                // Modal close button
-                const closeBtn = modal.querySelector('.modal-close');
-                const cancelBtn = modal.querySelector('#cancel-upload');
-
-                const closeModal = () => {
-                    modal.classList.remove('active');
-                    setTimeout(() => modal.remove(), 300);
-                    // Only remove fileInput if it's still attached
-                    if (fileInput.parentNode === document.body) {
-                        document.body.removeChild(fileInput);
-                    }
-                };
-
-                closeBtn.addEventListener('click', closeModal);
-                cancelBtn.addEventListener('click', closeModal);
-
-                // Confirm upload
-                const confirmBtn = modal.querySelector('#confirm-upload');
-                confirmBtn.addEventListener('click', () => {
-                    const ballName = document.getElementById('ball-name').value.trim() || 'Custom Ball';
-
-                    // Convert the file to a data URL for upload
-                    const reader = new FileReader();
-                    reader.onload = (event) => {
-                        const imageData = event.target.result;
-
-                        // Show loading state
-                        confirmBtn.disabled = true;
-                        confirmBtn.textContent = 'Creating...';
-
-                        // Send to server
-                        postWebViewMessage({
-                            type: 'imageUploaded',
-                            data: {
-                                imageUrl: imageData,
-                                itemType: 'ball',
-                                itemName: ballName
-                            }
-                        }).then(() => {
-                            // Show success and close modal
-                            showAward('gold', 'Custom ball created successfully!');
-                            closeModal();
-
-                            // Request updated custom weapons (which includes balls)
-                            requestCustomWeapons(); // Assuming this triggers a repopulation
-                        }).catch(error => {
-                            console.error('Error uploading image:', error);
-                            confirmBtn.disabled = false;
-                            confirmBtn.textContent = 'Create Ball';
-                            showError('Failed to create custom ball. Please try again.');
-                        });
-                    };
-                    reader.readAsDataURL(file);
-                });
-            } else {
-                // Clean up the input element if no file was selected or dialog cancelled
-                if (fileInput.parentNode === document.body) {
-                    document.body.removeChild(fileInput);
-                }
-            }
-        });
-        // Add error handling for file input click itself if needed
-        fileInput.addEventListener('error', (err) => {
-            console.error("Error with file input:", err);
-            if (fileInput.parentNode === document.body) {
-                document.body.removeChild(fileInput);
-            }
-            showError("Could not open file dialog.");
-        });
-    });
-    // --- End Create Custom Ball Button ---
-
-    // Append the "Create Custom Ball" button first to the grid container
-    ballContainer.appendChild(createCustomButton);
-
-    // Populate standard balls (directly after the create button)
+    // Populate standard balls
     Object.entries(weapons.balls).forEach(([key, ball]) => {
         const isUnlocked = highScore >= ball.unlockScore;
         const isSelected = selectedBall === ball;
+        const isDefault = key === 'default';
+        const isCustomized = isDefault && ball.image !== originalDefaultBallImage;
 
         const ballElement = document.createElement('div');
         ballElement.className = `weapon-item ${isUnlocked ? 'unlocked' : 'locked'} ${isSelected ? 'selected' : ''}`;
-        ballElement.innerHTML = `
+
+        // Base HTML
+        let innerHTML = `
             <img src="${ball.image}" alt="${ball.name}">
             <div class="weapon-info">
                 <h3>${ball.name}</h3>
@@ -3039,11 +2928,43 @@ function populateBallSelection() {
             </div>
         `;
 
+        // Add customization buttons for the default ball
+        if (isDefault) {
+            innerHTML += `
+                <div class="default-customize-controls">
+                    <button class="change-image-btn small-button" data-item-type="ball">Change Image</button>
+                    ${isCustomized ? '<button class="revert-image-btn small-button" data-item-type="ball">Revert</button>' : ''}
+                </div>
+            `;
+        }
+
+        ballElement.innerHTML = innerHTML;
+
         // Add tooltip
         ballElement.appendChild(createWeaponTooltip(ball));
 
+        // Add event listeners
         if (isUnlocked) {
-            ballElement.addEventListener('click', () => selectBall(ball));
+            // Make the main element selectable (unless clicking a button inside)
+            ballElement.addEventListener('click', (e) => {
+                if (!e.target.closest('button')) { // Don't select if clicking a button
+                    selectBall(ball);
+                }
+            });
+
+            // Add listeners for customize buttons if it's the default ball
+            if (isDefault) {
+                const changeBtn = ballElement.querySelector('.change-image-btn');
+                if (changeBtn) {
+                    changeBtn.addEventListener('click', () => showDefaultImageUploadModal('ball'));
+                }
+
+                const revertBtn = ballElement.querySelector('.revert-image-btn');
+                if (revertBtn) {
+                    // Ensure we call the correct revert function
+                    revertBtn.addEventListener('click', () => revertDefaultBallImage());
+                }
+            }
         }
 
         ballContainer.appendChild(ballElement);
