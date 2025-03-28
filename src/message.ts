@@ -34,64 +34,59 @@ export type DevvitMessagePayload = {
   type: 'uploadComplete';
   data: {
     imageUrl: string;
-    itemType: 'weapon' | 'ball' | 'ball';
+    itemType: 'weapon' | 'ball';
     itemName: string;
   };
 } | {
-  type: 'requestImageUrl';  // Added this new message type
-  data: {
-    itemType: 'weapon' | 'ball' | 'ball';
-  };
-} | {
-  type: 'requestImageUrl';
+  type: 'requestImageUrl';  // Fixed duplicate message type
   data: {
     itemType: 'weapon' | 'ball';
   };
 };
 
 export type DevvitMessage = {
-  type: 'devvit-message';
+  // Standardizing on 'customItemsData'
+  type: 'initialData' | 'gameOverAck' | 'leaderboardData' | 'leaderboardUpdate' | 'customItemsData' | 'requestImageUrl' | 'uploadComplete' | 'error' | 'clearRedisDataResponse';
   data: {
-    message: DevvitMessagePayload;
+    username?: string;
+    leaderboard?: LeaderboardEntry[];
+    success?: boolean;
+    message?: string;
+    details?: string;
+    weapon?: CustomItemData[];
+    ball?: CustomItemData[];
+    imageUrl?: string;
+    itemType?: 'weapon' | 'ball';
+    itemName?: string;
   };
+};
+
+/** Specific data payloads for WebView messages */
+type WebViewMessagePayloadMap = {
+  webViewReady: {}; // No data needed
+  gameOver: { finalScore: number };
+  getLeaderboard: {
+    existingLeaderboard?: LeaderboardEntry[]; // Optional existing data
+    tab?: 'this-subreddit' | 'all-subreddits'; // Add the requested tab
+  };
+  fetchCustomWeapons: {}; // No data needed
+  requestCustomItems: {}; // No data needed
+  requestImageUpload: { itemType: 'weapon' | 'ball' };
+  uploadImage: { imageUrl: string; itemType: 'weapon' | 'ball'; itemName: string };
+  clearRedisData: { dataType: 'leaderboard' | 'user' | 'items' | 'all' }; // Assuming this might be needed later
 };
 
 /** Messages from the web view to Devvit */
 export type WebViewMessage = {
-  type: 'webViewReady';
-} | {
-  type: 'gameOver';
-  data: { finalScore: number; existingLeaderboard?: LeaderboardEntry[] };
-} | {
-  type: 'getLeaderboard';
-  data?: { existingLeaderboard?: LeaderboardEntry[] };
-} | {
-  type: 'requestCustomItems';
-} | {
-  type: 'fetchCustomWeapons'; // Add this new message type
-} | {
-  type: 'requestImageUpload';
-  data: { itemType: 'weapon' | 'ball' };
-} | {
-  type: 'imageUploaded';
-  data: {
-    imageUrl: string;
-    itemType: 'weapon' | 'ball';
-    itemName: string;
-  };
-} | {
-  type: 'uploadImage';
-  data: {
-    imageUrl: string;
-    itemType: 'weapon' | 'ball';
-    itemName: string;
-  };
-} | {
-  type: 'fetchLeaderboard';
-  data: { tab: string };
-};
+  // Use mapped types for better type safety based on 'type'
+  [K in keyof WebViewMessagePayloadMap]: {
+    type: K;
+    data: WebViewMessagePayloadMap[K];
+  }
+}[keyof WebViewMessagePayloadMap];
 
-/** 
+
+/**
  * Web view event listener helper type.
  * This helps TypeScript understand the message event structure.
  */
@@ -114,6 +109,6 @@ export type CustomItemData = {
 export type DevvitSystemMessage = {
   type: 'devvit-message';
   data: {
-    message: DevvitMessage;
+    message: DevvitMessagePayload; // Use the more specific union type
   };
 };

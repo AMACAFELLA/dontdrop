@@ -1,15 +1,9 @@
-import { Devvit, useWebView, Context } from '@devvit/public-api';
-import type { WebViewMessage, DevvitMessage, LeaderboardEntry, CustomItemData } from './message.ts';
+import { Devvit, useWebView, Context, useChannel, RedisClient, useState } from '@devvit/public-api';
+import type { WebViewMessage, LeaderboardEntry, CustomItemData } from './message.js'; // Use .js extension
 import { LoadingAnimation } from './components/LoadingAnimation.js';
-
-// Constants for Redis keys
-const REDIS_KEYS = {
-  LEADERBOARD: 'dontdrop:leaderboard:v1',
-  WEEKLY_JOB: 'dontdrop:weekly_job_id:v1',
-  USER_PREFIX: 'dontdrop:user:v1:',
-  CUSTOM_WEAPONS: 'dontdrop:custom_weapons:v1',
-  CUSTOM_BALLS: 'dontdrop:custom_balls:v1'
-} as const;
+import { clearLeaderboardData, clearUserData, clearCustomItemsData, clearAllRedisData } from './clearRedis.js';
+import { REDIS_KEYS, TOP_PLAYERS_COUNT } from './constants.js'; // Import constants
+import { LeaderboardService } from './services/leaderboardService.js'; // Import the new service
 
 // Update configuration with required permissions
 Devvit.configure({
@@ -19,41 +13,29 @@ Devvit.configure({
   media: true // Add media permission for image uploads
 });
 
-const TOP_PLAYERS_COUNT = 10;
+// Define a type that includes just what you need for the service
+type LeaderboardContext = {
+  redis: RedisClient;
+};
 
 const DontDropGame = ({ context }: { context: Devvit.Context }) => {
-  const { mount } = useWebView({
+  // Instantiate the LeaderboardService
+  const leaderboardService = new LeaderboardService(context);
+
+  const { mount, postMessage } = useWebView({
     url: 'page.html',
     onMessage: async (message: WebViewMessage, hook) => {
       try {
         switch (message.type) {
           case 'webViewReady': {
-            // Get the current Reddit username
+            // Get the current Reddit user
             const currentUser = await context.reddit.getCurrentUser();
             const username = currentUser?.username || 'Guest';
-            
-            // Get leaderboard data using Redis
-            const leaderboardEntries = await context.redis.zRange(REDIS_KEYS.LEADERBOARD, 0, TOP_PLAYERS_COUNT - 1, {
-              reverse: true,
-              by: "rank"
-            });
+            // const subreddit = await context.reddit.getCurrentSubreddit(); // Subreddit context not needed for global leaderboard
+            // const subredditName = subreddit?.name || 'unknown_subreddit';
 
-            const entries: LeaderboardEntry[] = [];
-            if (leaderboardEntries) {
-              for (let i = 0; i < leaderboardEntries.length; i++) {
-                const entry = leaderboardEntries[i];
-                const userKey = `${REDIS_KEYS.USER_PREFIX}${entry.member}`;
-                const userData = await context.redis.hgetall(userKey);
-                
-                entries.push({
-                  username: entry.member,
-                  score: entry.score,
-                  rank: i + 1,
-                  createdAt: userData?.createdAt || new Date().toISOString(),
-                  updatedAt: userData?.updatedAt || new Date().toISOString()
-                });
-              }
-            }
+            // Get initial global leaderboard data using the service
+            const entries = await leaderboardService.getGlobalLeaderboard(TOP_PLAYERS_COUNT);
 
             // Send initial data to webview
             hook.postMessage({
@@ -61,6 +43,7 @@ const DontDropGame = ({ context }: { context: Devvit.Context }) => {
               data: {
                 message: {
                   type: 'initialData',
+                  // Pass username and the global leaderboard
                   data: { username, leaderboard: entries }
                 }
               }
@@ -72,41 +55,40 @@ const DontDropGame = ({ context }: { context: Devvit.Context }) => {
             const { finalScore } = message.data;
             const currentUser = await context.reddit.getCurrentUser();
             const username = currentUser?.username;
+            const t2 = currentUser?.id; // Get user ID (t2)
 
-            if (username && finalScore > 0) {
-              // Update Redis leaderboard
-              const currentScore = await context.redis.zScore(REDIS_KEYS.LEADERBOARD, username);
-              if (!currentScore || finalScore > currentScore) {
-                // Get previous top 5 before updating
-                const previousTop5 = await context.redis.zRange(REDIS_KEYS.LEADERBOARD, 0, 4, {
-                  reverse: true,
-                  by: "rank"
-                });
+            if (username && t2 && finalScore > 0) {
+              console.log(`Game over for ${username} (t2: ${t2}) with score: ${finalScore}`);
 
-                // Update the score
-                await context.redis.zAdd(REDIS_KEYS.LEADERBOARD, { 
-                  member: username, 
-                  score: finalScore 
-                });
+              // Get previous global top 5 before updating (for announcement logic)
+              const previousGlobalTop5 = await leaderboardService.getGlobalLeaderboard(5);
 
-                // Get new top 5 after updating
-                const newTop5 = await context.redis.zRange(REDIS_KEYS.LEADERBOARD, 0, 4, {
-                  reverse: true,
-                  by: "rank"
-                });
+              // Update the score using the service
+              const scoreUpdated = await leaderboardService.updateScore(username, finalScore, t2);
 
-                // Find player's new rank in top 5
-                const playerRank = newTop5.findIndex(entry => entry.member === username) + 1;
-                
-                // If player made it into top 5, schedule announcement
+              if (scoreUpdated) {
+                console.log(`Score updated successfully for ${username}. Fetching new leaderboard.`);
+
+                // Get the NEW updated global leaderboard
+                const updatedLeaderboard = await leaderboardService.getGlobalLeaderboard(TOP_PLAYERS_COUNT);
+
+                // --- Announcement Logic ---
+                // Get new GLOBAL top 5 after updating
+                const newGlobalTop5 = updatedLeaderboard.slice(0, 5);
+
+                // Find player's new rank in GLOBAL top 5
+                const playerRank = newGlobalTop5.findIndex(entry => entry.username === username) + 1;
+
+                // If player made it into GLOBAL top 5, schedule announcement
                 if (playerRank > 0 && playerRank <= 5) {
-                  // Find who they replaced (if anyone)
-                  let previousPlayer = null;
-                  if (previousTop5 && previousTop5.length >= playerRank) {
-                    const replacedEntry = previousTop5[playerRank - 1];
-                    if (replacedEntry && replacedEntry.member !== username) {
-                      previousPlayer = {
-                        username: replacedEntry.member,
+                  // Find who they replaced (if anyone) from the previous GLOBAL top 5
+                  let previousPlayerInfo = null;
+                  if (previousGlobalTop5 && previousGlobalTop5.length >= playerRank) {
+                    const replacedEntry = previousGlobalTop5[playerRank - 1];
+                    // Check if the player at the rank before update is different from the current player
+                    if (replacedEntry && replacedEntry.username !== username) {
+                      previousPlayerInfo = {
+                        username: replacedEntry.username,
                         score: replacedEntry.score
                       };
                     }
@@ -119,114 +101,100 @@ const DontDropGame = ({ context }: { context: Devvit.Context }) => {
                       username,
                       score: finalScore,
                       rank: playerRank,
-                      previousPlayer
+                      previousPlayer: previousPlayerInfo // Pass the potentially replaced player's info
                     },
                     runAt: new Date() // Run immediately
                   });
+                  console.log(`Scheduled announcement for ${username} reaching rank ${playerRank}`);
                 }
+                // --- End Announcement Logic ---
 
-                // Update user data
-                const userKey = `${REDIS_KEYS.USER_PREFIX}${username}`;
-                const now = new Date().toISOString();
-                
-                const userData = await context.redis.hgetall(userKey);
-                if (!userData) {
-                  // First time user
-                  await context.redis.hset(userKey, {
-                    username,
-                    score: finalScore.toString(),
-                    createdAt: now,
-                    updatedAt: now
-                  });
-                } else {
-                  // Update existing user
-                  await context.redis.hset(userKey, {
-                    score: finalScore.toString(),
-                    updatedAt: now
-                  });
-                }
+                // Acknowledge successful score update to the specific client
+                 hook.postMessage({
+                   type: 'devvit-message',
+                   data: {
+                     message: {
+                       type: 'gameOverAck',
+                       data: {
+                         success: true, // Score was updated
+                         username
+                         // No need to send leaderboard here, it will come via realtime
+                       }
+                     }
+                   }
+                 });
 
-                // Get updated leaderboard
-                const updatedEntries = await context.redis.zRange(REDIS_KEYS.LEADERBOARD, 0, TOP_PLAYERS_COUNT - 1, {
-                  reverse: true,
-                  by: "rank"
-                });
+                // Broadcast the FULL updated leaderboard to ALL clients via realtime
+                context.realtime.send('leaderboard_updates', updatedLeaderboard);
+                console.log("Broadcasted updated leaderboard via realtime channel.");
 
-                const leaderboard: LeaderboardEntry[] = [];
-                if (updatedEntries) {
-                  for (let i = 0; i < updatedEntries.length; i++) {
-                    const entry = updatedEntries[i];
-                    const userKey = `${REDIS_KEYS.USER_PREFIX}${entry.member}`;
-                    const userData = await context.redis.hgetall(userKey);
-                    
-                    leaderboard.push({
-                      username: entry.member,
-                      score: entry.score,
-                      rank: i + 1,
-                      createdAt: userData?.createdAt || now,
-                      updatedAt: userData?.updatedAt || now
-                    });
-                  }
-                }
-
-                // Send updated leaderboard to webview
+              } else {
+                console.log(`Score for ${username} was not updated (likely not a high score).`);
+                // Optionally send an ack without leaderboard update if needed
                 hook.postMessage({
                   type: 'devvit-message',
                   data: {
                     message: {
                       type: 'gameOverAck',
                       data: {
-                        success: true,
+                        success: false, // Indicate score wasn't updated
                         username,
-                        leaderboard
+                        leaderboard: await leaderboardService.getGlobalLeaderboard(TOP_PLAYERS_COUNT) // Send current leaderboard
                       }
                     }
                   }
                 });
               }
+            } else {
+              console.warn("Game over message received but user/score invalid. No update.", { username, t2, finalScore });
             }
             break;
           }
 
           case 'getLeaderboard': {
-            const entries = await context.redis.zRange(REDIS_KEYS.LEADERBOARD, 0, TOP_PLAYERS_COUNT - 1, {
-              reverse: true,
-              by: "rank"
-            });
+            const currentUser = await context.reddit.getCurrentUser();
+            // const subreddit = await context.reddit.getCurrentSubreddit();
+            // const subredditName = subreddit?.name || 'unknown_subreddit';
 
-            const leaderboard: LeaderboardEntry[] = [];
-            if (entries) {
-              for (let i = 0; i < entries.length; i++) {
-                const entry = entries[i];
-                const userKey = `${REDIS_KEYS.USER_PREFIX}${entry.member}`;
-                const userData = await context.redis.hgetall(userKey);
+            // Determine scope based on requested tab (default to global)
+            // const requestedTab = message.data?.tab || 'this-subreddit';
+            // For now, always fetch global regardless of tab request
+            // const scope = requestedTab === 'all-subreddits' ? 'global' : subredditName;
 
-                leaderboard.push({
-                  username: entry.member,
-                  score: entry.score,
-                  rank: i + 1,
-                  createdAt: userData?.createdAt || new Date().toISOString(),
-                  updatedAt: userData?.updatedAt || new Date().toISOString()
-                });
-              }
-            }
+            console.log("Fetching global leaderboard for client request");
+            // Get fresh global leaderboard data from the service
+            const leaderboard = await leaderboardService.getGlobalLeaderboard(TOP_PLAYERS_COUNT);
+
+            console.log(`Sending global leaderboard data to client:`, leaderboard.length, "entries");
 
             hook.postMessage({
               type: 'devvit-message',
               data: {
                 message: {
                   type: 'leaderboardData',
-                  data: { leaderboard }
+                  data: {
+                    // Always send global leaderboard for now
+                    tab: 'all-subreddits', // Indicate it's the global one
+                    entries: leaderboard.map(entry => ({
+                      // Ensure only serializable properties are sent
+                      username: entry.username,
+                      score: entry.score,
+                      rank: entry.rank || 0,
+                      createdAt: entry.createdAt || null,
+                      updatedAt: entry.updatedAt || null
+                    })),
+                    // username: currentUser?.username || null // Client already has username from initialData
+                  }
                 }
               }
             });
             break;
           }
 
+          // Keep custom items logic as is for now
           case 'fetchCustomWeapons':
           case 'requestCustomItems': {
             try {
-              // Get current user
               const currentUser = await context.reddit.getCurrentUser();
               const username = currentUser?.username;
 
@@ -234,46 +202,36 @@ const DontDropGame = ({ context }: { context: Devvit.Context }) => {
                 throw new Error('User not authenticated');
               }
 
-              // Get custom weapons for the user
-              const customWeaponsKey = `${REDIS_KEYS.CUSTOM_WEAPONS}:${username}`;
-              const customWeaponsData = await context.redis.hgetall(customWeaponsKey);
+              const fetchCustomItems = async (itemType: 'weapon' | 'ball') => {
+                const key = itemType === 'weapon' ? REDIS_KEYS.CUSTOM_WEAPONS : REDIS_KEYS.CUSTOM_BALLS;
+                const redisKey = `${key}:${username}`;
+                const data = await context.redis.hgetall(redisKey);
+                const items: CustomItemData[] = [];
 
-              // Get custom balls for the user
-              const customBallsKey = `${REDIS_KEYS.CUSTOM_BALLS}:${username}`;
-              const customBallsData = await context.redis.hgetall(customBallsKey);
-
-              // Parse the weapons data
-              const weapons: CustomItemData[] = [];
-              if (customWeaponsData && customWeaponsData.weapons) {
-                try {
-                  const parsedWeapons = JSON.parse(customWeaponsData.weapons);
-                  if (Array.isArray(parsedWeapons)) {
-                    weapons.push(...parsedWeapons);
+                if (data) {
+                  try {
+                    const itemName = itemType === 'weapon' ? 'weapons' : 'balls';
+                    if (data[itemName]) {
+                      const parsedItems = JSON.parse(data[itemName]);
+                      if (Array.isArray(parsedItems)) {
+                        return parsedItems;
+                      }
+                    }
+                  } catch (e) {
+                    console.error(`Error parsing custom ${itemType}s:`, e);
                   }
-                } catch (e) {
-                  console.error('Error parsing custom weapons:', e);
                 }
-              }
+                return items;
+              };
 
-              // Parse the balls data
-              const balls: CustomItemData[] = [];
-              if (customBallsData && customBallsData.balls) {
-                try {
-                  const parsedBalls = JSON.parse(customBallsData.balls);
-                  if (Array.isArray(parsedBalls)) {
-                    balls.push(...parsedBalls);
-                  }
-                } catch (e) {
-                  console.error('Error parsing custom balls:', e);
-                }
-              }
+              const weapons = await fetchCustomItems('weapon');
+              const balls = await fetchCustomItems('ball');
 
-              // Send the custom items data to the client
               hook.postMessage({
                 type: 'devvit-message',
                 data: {
                   message: {
-                    type: 'customWeaponsData',
+                    type: 'customItemsData', // Changed type to match frontend expectation
                     data: {
                       weapon: weapons,
                       ball: balls
@@ -299,54 +257,8 @@ const DontDropGame = ({ context }: { context: Devvit.Context }) => {
             break;
           }
 
-          case 'requestImageUpload': {
-            try {
-              const { itemType } = message.data;
-          
-              if (itemType !== 'weapon' && itemType !== 'ball') {
-                throw new Error('Unsupported item type');
-              }
-          
-              // Get current user
-              const currentUser = await context.reddit.getCurrentUser();
-              const username = currentUser?.username;
-          
-              if (!username) {
-                throw new Error('User not authenticated');
-              }
-          
-              // Instead of generating an upload URL, we need to inform the client
-              // that they should provide a URL to an existing image
-              hook.postMessage({
-                type: 'devvit-message',
-                data: {
-                  message: {
-                    type: 'requestImageUrl',
-                    data: {
-                      itemType
-                    }
-                  }
-                }
-              });
-            } catch (error) {
-              console.error('Error requesting image upload:', error);
-              hook.postMessage({
-                type: 'devvit-message',
-                data: {
-                  message: {
-                    type: 'error',
-                    data: {
-                      message: 'Failed to request image upload',
-                      details: error instanceof Error ? error.message : String(error)
-                    }
-                  }
-                }
-              });
-            }
-            break;
-          }
-          
-          case 'uploadImage': {
+          case 'uploadImage': // Corrected case to match WebViewMessage type
+          {
             try {
               const { imageUrl, itemType, itemName } = message.data;
 
@@ -354,7 +266,6 @@ const DontDropGame = ({ context }: { context: Devvit.Context }) => {
                 throw new Error('Missing required data for image upload');
               }
 
-              // Get current user
               const currentUser = await context.reddit.getCurrentUser();
               const username = currentUser?.username;
 
@@ -362,93 +273,80 @@ const DontDropGame = ({ context }: { context: Devvit.Context }) => {
                 throw new Error('User not authenticated');
               }
 
-              // Upload the image to Reddit's media service
-              const response = await context.media.upload({
-                url: imageUrl,
-                type: 'image'
-              });
+              // No need to re-upload, image URL is provided directly by client now
+              // const response = await context.media.upload({ url: imageUrl, type: 'image' });
 
-              // Create the new item with the Reddit media URL
               const newItem: CustomItemData = {
-                imageUrl: response.mediaUrl, // Use the URL returned by Reddit
+                imageUrl: imageUrl, // Use the provided URL directly
                 name: itemName,
                 createdAt: new Date().toISOString()
               };
 
-              if (itemType === 'weapon') {
-                // Store the custom weapon in Redis
-                const customWeaponsKey = `${REDIS_KEYS.CUSTOM_WEAPONS}:${username}`;
-                const customWeaponsData = await context.redis.hgetall(customWeaponsKey);
+              const redisKeyPrefix = itemType === 'weapon' ? REDIS_KEYS.CUSTOM_WEAPONS : REDIS_KEYS.CUSTOM_BALLS;
+              const userItemsKey = `${redisKeyPrefix}:${username}`;
+              const dataKey = itemType === 'weapon' ? 'weapons' : 'balls';
 
-                let weapons: CustomItemData[] = [];
-
-                if (customWeaponsData && customWeaponsData.weapons) {
-                  try {
-                    const parsedWeapons = JSON.parse(customWeaponsData.weapons);
-                    if (Array.isArray(parsedWeapons)) {
-                      weapons = parsedWeapons;
-                    }
-                  } catch (e) {
-                    console.error('Error parsing custom weapons:', e);
+              // Fetch existing items
+              const existingData = await context.redis.hgetall(userItemsKey);
+              let items: CustomItemData[] = [];
+              if (existingData && existingData[dataKey]) {
+                try {
+                  const parsed = JSON.parse(existingData[dataKey]);
+                  if (Array.isArray(parsed)) {
+                    items = parsed;
                   }
+                } catch (e) {
+                  console.error(`Error parsing existing custom ${itemType}s:`, e);
                 }
-
-                weapons.push(newItem);
-
-                // Save back to Redis
-                await context.redis.hset(customWeaponsKey, {
-                  weapons: JSON.stringify(weapons)
-                });
-              } else if (itemType === 'ball') {
-                // Store the custom ball in Redis
-                const customBallsKey = `${REDIS_KEYS.CUSTOM_BALLS}:${username}`;
-                const customBallsData = await context.redis.hgetall(customBallsKey);
-
-                let balls: CustomItemData[] = [];
-
-                if (customBallsData && customBallsData.balls) {
-                  try {
-                    const parsedBalls = JSON.parse(customBallsData.balls);
-                    if (Array.isArray(parsedBalls)) {
-                      balls = parsedBalls;
-                    }
-                  } catch (e) {
-                    console.error('Error parsing custom balls:', e);
-                  }
-                }
-
-                balls.push(newItem);
-
-                // Save back to Redis
-                await context.redis.hset(customBallsKey, {
-                  balls: JSON.stringify(balls)
-                });
               }
 
-              // Notify the client that the upload is complete
+              // Add new item and save back
+              items.push(newItem);
+              await context.redis.hset(userItemsKey, { [dataKey]: JSON.stringify(items) });
+
+              // Fetch updated lists to send back
+              const fetchCustomItems = async (type: 'weapon' | 'ball') => {
+                 const key = type === 'weapon' ? REDIS_KEYS.CUSTOM_WEAPONS : REDIS_KEYS.CUSTOM_BALLS;
+                 const redisKey = `${key}:${username}`;
+                 const data = await context.redis.hgetall(redisKey);
+                 const name = type === 'weapon' ? 'weapons' : 'balls';
+                 if (data && data[name]) {
+                   try {
+                     const parsed = JSON.parse(data[name]);
+                     return Array.isArray(parsed) ? parsed : [];
+                   } catch { return []; }
+                 }
+                 return [];
+              };
+
+              const updatedWeapons = await fetchCustomItems('weapon');
+              const updatedBalls = await fetchCustomItems('ball');
+
               hook.postMessage({
                 type: 'devvit-message',
                 data: {
                   message: {
                     type: 'uploadComplete',
                     data: {
-                      imageUrl: response.mediaUrl,
+                      imageUrl: imageUrl, // Send back the original URL
                       itemType,
-                      itemName
+                      itemName,
+                      weapons: updatedWeapons,
+                      balls: updatedBalls
                     }
                   }
                 }
               });
             } catch (error) {
-              console.error('Error uploading image:', error);
+              console.error('Error processing uploaded image:', error);
               hook.postMessage({
                 type: 'devvit-message',
                 data: {
                   message: {
                     type: 'error',
                     data: {
-                      message: 'Failed to upload image',
-                      details: error instanceof Error ? error.message : String(error)
+                      message: 'Failed to process uploaded image',
+                      details: error instanceof Error ? error.message : String(error),
                     }
                   }
                 }
@@ -456,6 +354,33 @@ const DontDropGame = ({ context }: { context: Devvit.Context }) => {
             }
             break;
           }
+           // Keep requestImageUpload logic as is (it tells client to provide URL)
+          case 'requestImageUpload': {
+             try {
+               const { itemType } = message.data;
+               if (itemType !== 'weapon' && itemType !== 'ball') {
+                 throw new Error('Unsupported item type');
+               }
+               const currentUser = await context.reddit.getCurrentUser();
+               if (!currentUser?.username) {
+                 throw new Error('User not authenticated');
+               }
+               // This case remains the same - it asks the client for a URL
+               hook.postMessage({
+                 type: 'devvit-message',
+                 data: {
+                   message: {
+                     type: 'requestImageUrl', // Tell client to provide URL
+                     data: { itemType }
+                   }
+                 }
+               });
+             } catch (error) {
+                console.error('Error requesting image upload:', error);
+                // Send error back to client
+             }
+             break;
+           }
         }
       } catch (error) {
         console.error('Error handling message:', error);
@@ -464,7 +389,7 @@ const DontDropGame = ({ context }: { context: Devvit.Context }) => {
           data: {
             message: {
               type: 'error',
-              data: { 
+              data: {
                 message: 'Failed to process game action',
                 details: error instanceof Error ? error.message : String(error)
               }
@@ -475,6 +400,38 @@ const DontDropGame = ({ context }: { context: Devvit.Context }) => {
     }
   });
 
+  // Realtime channel setup remains the same
+  const channel = useChannel({
+    name: 'leaderboard_updates',
+    onMessage: (leaderboard: LeaderboardEntry[]) => { // Expecting the full leaderboard array
+      console.log(`Received broadcasted leaderboard update via realtime channel with ${leaderboard.length} entries.`);
+      // Forward the update to the webview
+      postMessage({
+        type: 'devvit-message',
+        data: {
+          message: {
+            type: 'leaderboardUpdate', // New message type for realtime updates
+            data: {
+              entries: leaderboard // Send the full updated list
+            }
+          }
+        }
+      });
+    },
+    onSubscribed: () => console.log('Subscribed to leaderboard updates'),
+    onUnsubscribed: () => {
+      console.log('Unsubscribed from leaderboard updates');
+      setTimeout(() => channel.subscribe(), 5000); // Attempt to resubscribe
+    }
+  });
+
+  // Subscribe on mount using useState initializer
+  useState(() => {
+    channel.subscribe();
+    console.log('Subscribed to channel on mount');
+    return true; // Must return a JSONValue
+  });
+
   return (
     <vstack>
       <button onPress={() => mount()}>Play Don't Drop</button>
@@ -482,14 +439,14 @@ const DontDropGame = ({ context }: { context: Devvit.Context }) => {
   );
 };
 
-// Add custom post type for the game
+// Custom Post Type remains the same
 Devvit.addCustomPostType({
   name: "DontDrop",
   render: (context) => <DontDropGame context={context} />,
   height: "tall"
 });
 
-// Add menu item to create game posts
+// Menu Item remains the same
 Devvit.addMenuItem({
   label: "Create Don't Drop Game",
   location: "subreddit",
@@ -500,10 +457,10 @@ Devvit.addMenuItem({
         title: "Play Don't Drop - Test Your Reflexes!",
         subredditName: subreddit.name,
         preview: <LoadingAnimation />,
+        // Use a placeholder image URL for the post preview
         kind: "image",
-        url: "https://placeholder.com/game-preview.png"
+        url: "https://raw.githubusercontent.com/AMACAFELLA/dontdrop/main/webroot/assets/paddles/blue-paddle.png" // Example placeholder
       });
-
       context.ui.showToast('Game post created!');
       context.ui.navigateTo(post);
     } catch (error) {
@@ -513,42 +470,42 @@ Devvit.addMenuItem({
   }
 });
 
-// Weekly leaderboard update scheduler job
+// Weekly leaderboard update scheduler job - USE THE SERVICE
 Devvit.addSchedulerJob({
   name: 'weekly_leaderboard_update',
   onRun: async (_, context) => {
     try {
-      // Get top 10 players from Redis
-      const leaderboardEntries = await context.redis.zRange('leaderboard', 0, 9, {
-        reverse: true,
-        by: 'rank'
-      });
-      
-      // Format and post the leaderboard
+      const leaderboardService = new LeaderboardService(context); // Instantiate service
+      // Get top 10 players from the GLOBAL leaderboard using the service
+      const leaderboardEntries = await leaderboardService.getGlobalLeaderboard(10);
+
+      // Format and post the leaderboard, ensuring keys match frontend expectations
       const formattedEntries = leaderboardEntries.map(entry => ({
-        member: entry.member,
+        username: entry.username, // Ensure this key is 'username'
         score: entry.score
       }));
-      
+
       const leaderboardData = encodeURIComponent(JSON.stringify(formattedEntries));
       const subreddit = await context.reddit.getCurrentSubreddit();
-      
+
       await context.reddit.submitPost({
         title: `📊 Weekly Don't Drop Leaderboard Update - Top Players 🏆`,
         subredditName: subreddit.name,
         preview: (
           <blocks height="tall">
+            {/* Ensure this URL points to a publicly accessible HTML file */}
             <webview url={`https://raw.githubusercontent.com/AMACAFELLA/dontdrop/main/webroot/leaderboard.html?data=${leaderboardData}`} />
           </blocks>
         ),
       });
+      console.log("Posted weekly leaderboard update.");
     } catch (error) {
       console.error('Error posting weekly leaderboard:', error);
     }
   }
 });
 
-// Top 5 player announcement types and functions
+// Top 5 player announcement types and functions remain the same
 type TopPlayerData = {
   username: string;
   score: number;
@@ -559,7 +516,7 @@ type TopPlayerData = {
   };
 };
 
-// Scheduler job to announce new top 5 player
+// Scheduler job to announce new top 5 player remains the same
 Devvit.addSchedulerJob({
   name: 'announce_top_player',
   onRun: async (event, context) => {
@@ -567,17 +524,17 @@ Devvit.addSchedulerJob({
       const data = event.data as TopPlayerData;
       const playerData = encodeURIComponent(JSON.stringify(data));
       const subreddit = await context.reddit.getCurrentSubreddit();
-      
+
       await context.reddit.submitPost({
         title: `🎮 ${data.username} just reached #${data.rank} on Don't Drop! 🏆`,
         subredditName: subreddit.name,
         preview: (
           <blocks height="regular">
-            <webview url={`https://raw.githubusercontent.com//dontdrop/main/webroot/top-player.html?data=${playerData}`} />
+             {/* Ensure this URL points to a publicly accessible HTML file */}
+            <webview url={`https://raw.githubusercontent.com/AMACAFELLA/dontdrop/main/webroot/top-player.html?data=${playerData}`} />
           </blocks>
         ),
       });
-      
       console.log(`Posted announcement for ${data.username} reaching rank ${data.rank}`);
     } catch (error) {
       console.error('Error posting top player announcement:', error);
@@ -585,50 +542,85 @@ Devvit.addSchedulerJob({
   },
 });
 
-// Set up weekly leaderboard post schedule
+// AppInstall Trigger remains the same
 Devvit.addTrigger({
   event: 'AppInstall',
   onEvent: async (_, context) => {
-    const jobId = await context.scheduler.runJob({
-      cron: '0 0 * * 0', // Every Sunday at midnight
-      name: 'weekly_leaderboard_update',
-      data: {},
-    });
-    await context.redis.set('weeklyLeaderboardJobId', jobId);
+    try {
+       const jobId = await context.scheduler.runJob({
+         cron: '0 0 * * 0', // Every Sunday at midnight UTC
+         name: 'weekly_leaderboard_update',
+         data: {},
+       });
+       await context.redis.set(REDIS_KEYS.WEEKLY_JOB, jobId);
+       console.log("Scheduled weekly leaderboard job with ID:", jobId);
+    } catch (error) {
+        console.error("Failed to schedule weekly job:", error);
+    }
   },
 });
 
-// Helper function to announce top players
-export async function announceTopPlayer(
-  context: Context,
-  username: string, 
-  score: number, 
-  rank: number, 
-  previousPlayer?: { username: string; score: number }
-) {
-  // Create a data object that doesn't include previousPlayer if it's undefined
-  const jobData: {
-    username: string;
-    score: number;
-    rank: number;
-    previousPlayer?: { username: string; score: number };
-  } = {
-    username,
-    score,
-    rank
-  };
-  
-  // Only add previousPlayer if it exists
-  if (previousPlayer) {
-    jobData.previousPlayer = previousPlayer;
-  }
-  
-  await context.scheduler.runJob({
-    name: 'announce_top_player',
-    data: jobData,
-    runAt: new Date()
-  });
-}
+// Clear Data Form and Menu Item - USE THE SERVICE
+const clearDataForm = Devvit.createForm(
+  {
+    title: "Clear Don't Drop Game Data",
+    fields: [
+      {
+        type: "select",
+        name: "dataType",
+        label: "Select data to clear",
+        options: [
+          { label: "Leaderboard Only", value: "leaderboard" },
+          // { label: "Current User Data", value: "user" }, // User data clearing might need rework if USER_PREFIX is removed
+          // { label: "Custom Items", value: "items" },
+          // { label: "All Game Data", value: "all" } // 'all' might be misleading now
+        ],
+        defaultValue: ["leaderboard"]
+      }
+    ],
+    acceptLabel: "Clear Data",
+    cancelLabel: "Cancel"
+  },
+  async (event, context) => {
+    const dataType = event.values.dataType[0];
+    let success = false;
+    const leaderboardService = new LeaderboardService(context); // Instantiate service
 
+    console.log(`Attempting to clear data: ${dataType}`);
+
+    switch (dataType) {
+      case "leaderboard":
+        // Use the service method to clear leaderboard data
+        success = await leaderboardService.clearAllLeaderboardData();
+        break;
+      // Add cases for 'user', 'items', 'all' if needed, potentially using service methods
+      // case "user": ...
+      // case "items": ...
+      // case "all": ...
+      default:
+         context.ui.showToast("Selected data type not implemented for clearing.");
+         return;
+    }
+
+    if (success) {
+      context.ui.showToast("Game data cleared successfully!");
+    } else {
+      context.ui.showToast("Failed to clear game data");
+    }
+  }
+);
+
+Devvit.addMenuItem({
+  label: "Clear Game Data",
+  location: "subreddit",
+  onPress: async (event, context) => {
+    try {
+      context.ui.showForm(clearDataForm);
+    } catch (error) {
+      console.error("Error showing clear game data form:", error);
+      context.ui.showToast("An error occurred while trying to clear game data");
+    }
+  }
+});
 
 export default Devvit;

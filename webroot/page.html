@@ -42,7 +42,7 @@
               <div class="paddle-decoration"></div>
             </div>
             <div class="title-underline"></div>
-            <p class="game-subtitle">Master the Paddle, Own the Table</p>
+            <p class="game-subtitle">Don't let the ball drop!</p>
           </div>
           <nav class="menu-nav">
             <button id="start-btn" class="menu-button primary">
@@ -144,7 +144,9 @@
         <div id="gameArea">
           <div id="ball"></div>
           <div id="instructions" class="instructions pulse">
-            Click or tap to start!
+            <div class="instructions-container">
+              <div class="start-prompt">Click to start!</div>
+            </div>
           </div>
           <div id="game-over-container"></div>
           <!-- Container for game over overlay -->
@@ -152,36 +154,56 @@
       </div>
 
       <!-- Leaderboard Screen -->
-      <div id="leaderboard-screen" class="screen leaderboard-screen">
-        <div class="screen-header">
-          <h2>Reddit Leaderboard</h2>
-          <button id="back-from-leaderboard-btn" class="back-button">
-            <span class="button-icon back"></span>
-            Back
-          </button>
-        </div>
-        <div class="leaderboard-container">
-          <div class="leaderboard-header">
-            <div class="rank-col">Rank</div>
-            <div class="name-col">Redditor</div>
-            <div class="score-col">Score</div>
-            <div class="date-col">Date</div>
-          </div>
-          <div id="leaderboard-entries" class="leaderboard-entries">
-            <!-- Loading state will be replaced by JavaScript -->
-            <div class="loading-spinner">
-              <div class="spinner"></div>
-              <p>Loading leaderboard...</p>
+      <div id="leaderboard-screen" class="screen">
+        <div class="screen-content">
+          <h2>Leaderboard</h2>
+
+          <div class="leaderboard-container">
+            <div class="leaderboard-tabs">
+              <button class="tab-button active" data-tab="this-subreddit">
+                This Subreddit
+              </button>
+              <button class="tab-button" data-tab="all-subreddits">
+                All Subreddits
+              </button>
+            </div>
+
+            <div class="tab-content active" id="this-subreddit-leaderboard">
+              <table class="leaderboard-table">
+                <thead>
+                  <tr>
+                    <th>Rank</th>
+                    <th>Redditor</th>
+                    <th>Score</th>
+                    <th>Date</th>
+                  </tr>
+                </thead>
+                <tbody id="this-subreddit-leaderboard-body">
+                  <!-- This subreddit's entries will go here -->
+                </tbody>
+              </table>
+            </div>
+
+            <div class="tab-content" id="all-subreddits-leaderboard">
+              <table class="leaderboard-table">
+                <thead>
+                  <tr>
+                    <th>Rank</th>
+                    <th>Redditor</th>
+                    <th>Score</th>
+                    <th>Subreddit</th>
+                    <th>Date</th>
+                  </tr>
+                </thead>
+                <tbody id="all-subreddits-leaderboard-body">
+                  <!-- All subreddits' entries will go here -->
+                </tbody>
+              </table>
             </div>
           </div>
-        </div>
-        <div class="leaderboard-footer">
-          <p>Can you make it to the top? Play now and set a new high score!</p>
-          <button id="play-from-leaderboard-btn" class="menu-button primary">
-            <span class="button-content">
-              <span class="button-icon play"></span>
-              Play Game
-            </span>
+
+          <button id="back-from-leaderboard-btn" class="menu-button">
+            Back to Menu
           </button>
         </div>
       </div>
@@ -189,7 +211,7 @@
       <!-- Achievements Screen -->
       <div id="badges-screen" class="screen">
         <div class="screen-header">
-          <h2>Reddit Achievements</h2>
+          <h2>Achievements</h2>
           <button id="back-from-badges-btn" class="back-button">
             <span class="button-icon back"></span>
             Back
@@ -198,7 +220,7 @@
         <div class="achievements-grid">
           <div class="achievement-card">
             <div class="achievement-icon beginner"></div>
-            <h3>Ping Pong Beginner</h3>
+            <h3>Ping That Pong</h3>
             <p>Score 10 points</p>
             <div class="achievement-status" data-achievement="beginner">
               Locked
@@ -206,7 +228,7 @@
           </div>
           <div class="achievement-card">
             <div class="achievement-icon novice"></div>
-            <h3>Table Tennis Novice</h3>
+            <h3>The bouncer</h3>
             <p>Score 50 points</p>
             <div class="achievement-status" data-achievement="novice">
               Locked
@@ -214,7 +236,7 @@
           </div>
           <div class="achievement-card">
             <div class="achievement-icon master"></div>
-            <h3>Paddle Master</h3>
+            <h3>Paddle Bender</h3>
             <p>Score 100 points</p>
             <div class="achievement-status" data-achievement="master">
               Locked
@@ -222,7 +244,7 @@
           </div>
           <div class="achievement-card">
             <div class="achievement-icon legend"></div>
-            <h3>Reddit Legend</h3>
+            <h3>The Legend</h3>
             <p>Score 250 points</p>
             <div class="achievement-status" data-achievement="legend">
               Locked
@@ -297,6 +319,7 @@
         </div>
       </div>
     </div>
+    <!-- Phaser library removed as it's not used in script.js -->
     <script src="script.js"></script>
   </body>
 </html>

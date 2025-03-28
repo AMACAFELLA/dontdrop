@@ -5,7 +5,7 @@
   --accent-color: #60a5fa;
   --border-radius: 6px;
   --shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-  
+
   /* Reddit colors */
   --reddit-orange: #FF4500;
   --reddit-orangered: #FF5700;
@@ -15,7 +15,7 @@
   --reddit-gray: #1A1A1B;
   --reddit-light-gray: #DAE0E6;
   --reddit-black: #030303;
-  
+
   /* Game colors */
   --primary: var(--reddit-orangered);
   --primary-light: #ff8c5a;
@@ -145,7 +145,8 @@
 }
 
 /* Fix layout issues */
-html, body {
+html,
+body {
   margin: 0;
   padding: 0;
   width: 100%;
@@ -365,20 +366,14 @@ canvas {
   color: #4CAF50;
 }
 
+/* Simplified #instructions: Layout is handled by .instructions-container inside it */
 .instructions {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
   color: var(--text);
   font-size: 1.5rem;
   text-align: center;
   pointer-events: none;
-  animation: pulse 2s ease-in-out infinite;
-  text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
-  opacity: 0.8;
-  text-shadow: 0 0 10px var(--primary-glow);
-  animation: floatAnimation 2s ease-in-out infinite;
+  /* Keep this so it doesn't block clicks */
+  /* Removed position, transform, animation, text-shadow, opacity */
 }
 
 @media (max-width: 600px) {
@@ -538,7 +533,8 @@ canvas {
 
 .title-container {
   text-align: center;
-  margin-top: 4rem; /* Increased from 2rem to 4rem to bring the title down further */
+  margin-top: 4rem;
+  /* Increased from 2rem to 4rem to bring the title down further */
   margin-bottom: 2rem;
   animation: slideIn 0.8s ease backwards;
   margin-bottom: 3rem;
@@ -564,9 +560,12 @@ canvas {
 }
 
 @keyframes titlePulse {
-  0%, 100% {
+
+  0%,
+  100% {
     filter: drop-shadow(0 0 15px var(--primary-glow));
   }
+
   50% {
     filter: drop-shadow(0 0 25px var(--accent-glow));
   }
@@ -583,10 +582,13 @@ canvas {
 }
 
 @keyframes glowPulse {
-  0%, 100% {
+
+  0%,
+  100% {
     opacity: 0.5;
     width: 150px;
   }
+
   50% {
     opacity: 1;
     width: 200px;
@@ -595,55 +597,71 @@ canvas {
 
 .menu-nav {
   display: flex;
-  flex-direction: row;
-  gap: 1rem;
-  z-index: 1;
-  display: flex;
   flex-wrap: wrap;
+  /* Use flex-wrap instead of duplicate display:flex */
   gap: 1.2rem;
+  /* Keep the larger gap */
   z-index: 1;
   margin-top: 2rem;
+  justify-content: center;
+  /* Center buttons if they wrap */
+  max-width: calc(3 * 220px + 2 * 1.2rem);
+  /* Limit width to 3 buttons (220px) + gaps */
+  /* Limit width to 3 buttons + gaps */
+  margin-left: auto;
+  /* Center the nav block */
+  margin-right: auto;
+  /* Center the nav block */
 }
 
+/* Consolidated .menu-button styles */
 .menu-button {
   position: relative;
-  padding: 1rem 2rem;
-  font-size: 1.2rem;
-  border: none;
-  border-radius: 50px;
-  background: var(--surface-light);
-  color: var(--text);
-  cursor: pointer;
-  overflow: hidden;
-  transition: all 0.3s ease;
-  backdrop-filter: blur(10px);
-  min-width: 200px;
-  animation: slideIn 0.5s ease backwards;
-  min-width: 200px;
-  padding: 15px 30px;
-  font-size: 1.2rem;
-  color: var(--text);
-  background: rgba(255, 255, 255, 0.1);
-  border: none;
-  border-radius: 30px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  backdrop-filter: blur(5px);
-  margin: 10px 0;
-  position: relative;
-  overflow: hidden;
+  /* Keep relative positioning */
   padding: 1.2rem 2.5rem;
+  /* Keep latest padding */
   font-size: 1.2rem;
-  border: none;
-  border-radius: 50px;
-  background: rgba(255, 255, 255, 0.1);
+  /* Consistent font size */
   color: var(--text);
+  /* Consistent text color */
+  background: rgba(255, 255, 255, 0.1);
+  /* Keep latest background */
+  border: none;
+  /* Consistent border */
+  border-radius: 50px;
+  /* Keep latest border-radius */
   cursor: pointer;
+  /* Consistent cursor */
   overflow: hidden;
+  /* Consistent overflow */
   transition: all 0.3s ease;
+  /* Consistent transition */
   backdrop-filter: blur(5px);
-  min-width: 250px;
+  /* Keep latest backdrop-filter */
+  min-width: 220px;
+  /* Restore uniform width, slightly smaller */
+  margin: 10px 0;
+  /* Keep margin */
+  animation: slideIn 0.5s ease backwards;
+  /* Keep animation */
+  text-align: center;
+  /* Ensure text is centered */
+  white-space: nowrap;
+  /* Prevent text wrapping */
 }
+
+.button-content {
+  display: flex;
+  align-items: center;
+  /* Vertically center icon and text */
+  justify-content: center;
+  /* Horizontally center icon and text */
+  width: 100%;
+  /* Ensure span takes full button width */
+  gap: 0.5rem;
+  /* Add some space between icon and text */
+}
+
 
 .menu-button::before {
   content: '';
@@ -1017,6 +1035,7 @@ canvas {
     transform: scale(0.1);
     opacity: 0.6;
   }
+
   100% {
     transform: scale(1.5);
     opacity: 0;
@@ -1039,6 +1058,7 @@ canvas {
     opacity: 0.6;
     transform: translate(-50%, -50%);
   }
+
   100% {
     width: 150px;
     height: 150px;
@@ -1081,10 +1101,12 @@ canvas {
     transform: scale(0.5);
     opacity: 0;
   }
+
   50% {
     transform: scale(1.1);
     opacity: 1;
   }
+
   100% {
     transform: scale(1);
     opacity: 0;
@@ -1598,6 +1620,60 @@ canvas {
   box-shadow: 0 0 5px var(--accent-glow);
 }
 
+/* Combo display */
+.combo-display {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  background: rgba(0, 0, 0, 0.7);
+  border: 2px solid var(--reddit-orangered);
+  border-radius: 10px;
+  padding: 10px 15px;
+  color: white;
+  font-weight: bold;
+  z-index: 100;
+  transition: opacity 0.3s ease;
+  box-shadow: 0 0 15px rgba(255, 69, 0, 0.3);
+}
+
+.combo-counter {
+  font-size: 1.2rem;
+  margin-bottom: 5px;
+}
+
+.combo-count {
+  color: var(--reddit-orangered);
+}
+
+.combo-multiplier {
+  font-size: 1.5rem;
+  color: var(--reddit-orangered);
+  text-align: center;
+}
+
+.multiplier-value {
+  font-size: 1.8rem;
+  text-shadow: 0 0 10px rgba(255, 69, 0, 0.5);
+}
+
+.combo-display.pulse {
+  animation: pulse 0.3s ease-in-out;
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.1);
+  }
+
+  100% {
+    transform: scale(1);
+  }
+}
+
 /* Combo text effect */
 .combo-text {
   position: absolute;
@@ -1680,6 +1756,7 @@ canvas {
     opacity: 1;
     border-width: 2px;
   }
+
   100% {
     width: 300px;
     height: 300px;
@@ -1726,69 +1803,64 @@ canvas {
       transparent 20px);
 }
 
-/* Enhanced title section */
+/* Enhanced title section (Consolidated) */
 .title-ping-pong {
   position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 20px;
-  margin-bottom: 20px;
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   gap: 30px;
+  /* Keep latest gap */
   margin-bottom: 20px;
+  /* Consistent margin */
 }
 
 .ball-decoration,
 .paddle-decoration {
-  width: 40px;
-  height: 40px;
-  background-size: contain;
-  background-repeat: no-repeat;
-  background-position: center;
-  filter: drop-shadow(0 0 10px var(--accent-glow));
   width: 50px;
+  /* Keep latest size */
   height: 50px;
+  /* Keep latest size */
   background-size: contain;
   background-repeat: no-repeat;
   background-position: center;
   filter: drop-shadow(0 0 15px var(--accent-glow));
+  /* Keep latest filter */
   transition: transform 0.3s ease;
+  /* Keep transition */
 }
 
 .ball-decoration {
   background-image: url('assets/ball.png');
-  animation: spin 4s linear infinite;
-  background-image: url('assets/ball.png');
+  /* Consistent image */
   animation: spin 6s linear infinite;
+  /* Keep latest animation */
 }
 
 .paddle-decoration {
   background-image: url('assets/paddle.png');
-  animation: tiltPaddle 2s ease-in-out infinite;
-  background-image: url('assets/paddle.png');
+  /* Consistent image */
   animation: tiltPaddle 3s ease-in-out infinite;
+  /* Keep latest animation */
 }
 
 .game-subtitle {
-  color: var(--accent);
-  font-size: 1.2rem;
-  text-transform: uppercase;
-  letter-spacing: 2px;
-  margin-top: 10px;
-  opacity: 0.8;
-  text-shadow: 0 0 10px var(--accent-glow);
   color: var(--text);
+  /* Keep latest color */
   font-size: 1.3rem;
+  /* Keep latest font-size */
   text-transform: uppercase;
+  /* Consistent transform */
   letter-spacing: 3px;
+  /* Keep latest spacing */
   margin-top: 15px;
+  /* Keep latest margin */
   opacity: 0.9;
+  /* Keep latest opacity */
   text-shadow: 0 0 10px var(--accent-glow);
+  /* Consistent shadow */
   position: relative;
+  /* Keep position */
 }
 
 /* Button icons */
@@ -1864,7 +1936,7 @@ canvas {
 
 .menu-content:hover {
   transform: translateY(-5px);
-  box-shadow: 
+  box-shadow:
     0 10px 50px rgba(0, 0, 0, 0.5),
     inset 0 0 20px rgba(255, 255, 255, 0.05);
 }
@@ -2227,7 +2299,8 @@ canvas {
   width: 100%;
   max-width: 800px;
   margin-bottom: 2rem;
-  gap: 20px; /* Add gap to create space between elements */
+  gap: 20px;
+  /* Add gap to create space between elements */
 }
 
 .screen-header h2 {
@@ -2258,7 +2331,7 @@ canvas {
 .button-icon.back {
   width: 20px;
   height: 20px;
-  background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23fff"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>');
+  background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/svg" viewBox="0 0 24 24" fill="%23fff"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>');
   background-repeat: no-repeat;
   background-size: contain;
 }
@@ -2310,42 +2383,42 @@ canvas {
 }
 
 .achievement-icon.beginner {
-  background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23FF4500"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>');
+  background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/svg" viewBox="0 0 24 24" fill="%23FF4500"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>');
   background-size: 60%;
   background-position: center;
   background-repeat: no-repeat;
 }
 
 .achievement-icon.novice {
-  background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23FF4500"><path d="M19 3h-4.18C14.4 1.84 13.3 1 12 1c-1.3 0-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm-2 14l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/></svg>');
+  background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/svg" viewBox="0 0 24 24" fill="%23FF4500"><path d="M19 3h-4.18C14.4 1.84 13.3 1 12 1c-1.3 0-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm-2 14l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/></svg>');
   background-size: 60%;
   background-position: center;
   background-repeat: no-repeat;
 }
 
 .achievement-icon.master {
-  background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23FF4500"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>');
+  background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/svg" viewBox="0 0 24 24" fill="%23FF4500"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>');
   background-size: 60%;
   background-position: center;
   background-repeat: no-repeat;
 }
 
 .achievement-icon.legend {
-  background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23FF4500"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zm4.24 16L12 15.45 7.77 18l1.12-4.81-3.73-3.23 4.92-.42L12 5l1.92 4.53 4.92.42-3.73 3.23L16.23 18z"/></svg>');
+  background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/svg" viewBox="0 0 24 24" fill="%23FF4500"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zm4.24 16L12 15.45 7.77 18l1.12-4.81-3.73-3.23 4.92-.42L12 5l1.92 4.53 4.92.42-3.73 3.23L16.23 18z"/></svg>');
   background-size: 60%;
   background-position: center;
   background-repeat: no-repeat;
 }
 
 .achievement-icon.first-bounce {
-  background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23FF4500"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-5-9h10v2H7z"/></svg>');
+  background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/svg" viewBox="0 0 24 24" fill="%23FF4500"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-5-9h10v2H7z"/></svg>');
   background-size: 60%;
   background-position: center;
   background-repeat: no-repeat;
 }
 
 .achievement-icon.quick-reflexes {
-  background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23FF4500"><path d="M13.5 5.5c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zM9.8 8.9L7 23h2.1l1.8-8 2.1 2v6h2v-7.5l-2.1-2 .6-3C14.8 12 16.8 13 19 13v-2c-1.9 0-3.5-1-4.3-2.4l-1-1.6c-.4-.6-1-1-1.7-1-.3 0-.5.1-.8.1L6 8.3V13h2V9.6l1.8-.7"/></svg>');
+  background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/svg" viewBox="0 0 24 24" fill="%23FF4500"><path d="M13.5 5.5c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zM9.8 8.9L7 23h2.1l1.8-8 2.1 2v6h2v-7.5l-2.1-2 .6-3C14.8 12 16.8 13 19 13v-2c-1.9 0-3.5-1-4.3-2.4l-1-1.6c-.4-.6-1-1-1.7-1-.3 0-.5.1-.8.1L6 8.3V13h2V9.6l1.8-.7"/></svg>');
   background-size: 60%;
   background-position: center;
   background-repeat: no-repeat;
@@ -2433,139 +2506,30 @@ canvas {
     gap: 15px;
     padding: 0 10px;
   }
-  
+
   .achievement-card {
     padding: 15px;
   }
-  
+
   .achievement-icon {
     width: 50px;
     height: 50px;
     margin-bottom: 10px;
   }
-  
+
   .achievement-card h3 {
     font-size: 1rem;
   }
-  
+
   .screen-header h2 {
     font-size: 2rem;
   }
 }
 
 /* Leaderboard styles */
-.leaderboard-container {
-  width: 100%;
-  max-width: 800px;
-  background: rgba(30, 30, 30, 0.8);
-  border-radius: 15px;
-  border: 1px solid var(--reddit-orangered);
-  box-shadow: 0 0 20px rgba(255, 69, 0, 0.3);
-  overflow: hidden;
-  margin-bottom: 2rem;
-}
+/* Styles for .leaderboard-container, .leaderboard-header, .leaderboard-entry, etc. were removed as they targeted the old div structure */
 
-.leaderboard-header {
-  display: grid;
-  grid-template-columns: 80px 1fr 120px 120px;
-  background: rgba(255, 69, 0, 0.2);
-  padding: 15px;
-  font-weight: bold;
-  color: #FFF;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.leaderboard-entry {
-  display: grid;
-  grid-template-columns: 80px 1fr 120px 120px;
-  padding: 15px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-  transition: all 0.2s ease;
-}
-
-.leaderboard-entry:hover {
-  background: rgba(255, 255, 255, 0.05);
-}
-
-.leaderboard-entry.current-user {
-  background: rgba(255, 69, 0, 0.1);
-  border-left: 3px solid var(--reddit-orangered);
-}
-
-.rank-col {
-  text-align: center;
-  font-weight: bold;
-}
-
-.rank-medal {
-  display: inline-block;
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  line-height: 30px;
-  text-align: center;
-  font-weight: bold;
-}
-
-.rank-1 .rank-medal {
-  background: #FFD700;
-  color: #000;
-  box-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
-}
-
-.rank-2 .rank-medal {
-  background: #C0C0C0;
-  color: #000;
-  box-shadow: 0 0 10px rgba(192, 192, 192, 0.5);
-}
-
-.rank-3 .rank-medal {
-  background: #CD7F32;
-  color: #000;
-  box-shadow: 0 0 10px rgba(205, 127, 50, 0.5);
-}
-
-.name-col {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.user-avatar {
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  background: var(--reddit-orangered);
-}
-
-.score-col {
-  text-align: right;
-  font-weight: bold;
-  color: var(--reddit-orangered);
-}
-
-.date-col {
-  text-align: right;
-  font-size: 0.9em;
-  color: rgba(255, 255, 255, 0.7);
-}
-
-.leaderboard-entries {
-  max-height: 400px;
-  overflow-y: auto;
-}
-
-.leaderboard-footer {
-  text-align: center;
-  margin-top: 20px;
-}
-
-.leaderboard-footer p {
-  margin-bottom: 15px;
-  color: #CCC;
-}
-
-/* Loading spinner */
+/* Loading spinner (kept as it might be useful) */
 .loading-spinner {
   display: flex;
   flex-direction: column;
@@ -2585,231 +2549,266 @@ canvas {
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
-/* Responsive layout for leaderboard */
+/* Responsive layout for leaderboard (Table-based) */
+/* Adjust table styles if needed for responsiveness */
 @media (max-width: 600px) {
-  .leaderboard-header,
-  .leaderboard-entry {
-    grid-template-columns: 60px 1fr 80px;
-  }
-  
-  .date-col {
+
+  .leaderboard-table th:nth-child(4),
+  /* Hide Date column on small screens */
+  .leaderboard-table td:nth-child(4) {
     display: none;
   }
-  
+
+  .leaderboard-table th,
+  .leaderboard-table td {
+    padding: 8px 5px;
+    /* Reduce padding */
+    font-size: 0.9em;
+  }
+
   .leaderboard-container {
     margin: 0 10px;
+    /* Keep margin */
   }
 }
+
+/* Ensure table cell text is visible */
+.leaderboard-table td {
+  color: var(--text);
+  /* Use white text color */
+  padding: 12px 15px;
+  /* Add padding for better spacing */
+  vertical-align: middle;
+  /* Align text vertically */
+}
+
+/* Style the current user's row */
+.leaderboard-table tr.current-user td {
+  background-color: rgba(255, 69, 0, 0.15);
+  /* Highlight background */
+  font-weight: bold;
+}
+
 
 /* Weapon Selection Screen */
 #weapon-selection-screen {
-    display: none;
-    background: linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%);
-    color: #ffffff;
-    padding: 20px;
-    max-height: 100vh;
-    overflow: hidden;
+  display: none;
+  background: linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%);
+  color: #ffffff;
+  padding: 20px;
+  max-height: 100vh;
+  overflow: hidden;
 }
 
 #weapon-selection-screen.active {
-    display: block;
+  display: block;
 }
 
 .weapon-selection-content {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 20px;
-    overflow-y: auto;
-    max-height: calc(100vh - 100px); /* Adjust for header space */
-    scrollbar-width: thin;
-    scrollbar-color: #ff4500 rgba(255, 255, 255, 0.1);
-    scroll-behavior: smooth;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+  /* Removed overflow-y and max-height */
+  scrollbar-width: thin;
+  scrollbar-color: #ff4500 rgba(255, 255, 255, 0.1);
+  scroll-behavior: smooth;
 }
 
 .weapon-selection-content::-webkit-scrollbar {
-    width: 8px;
+  width: 8px;
 }
 
 .weapon-selection-content::-webkit-scrollbar-track {
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 10px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
 }
 
 .weapon-selection-content::-webkit-scrollbar-thumb {
-    background-color: #ff4500;
-    border-radius: 10px;
+  background-color: #ff4500;
+  border-radius: 10px;
 }
 
 .weapon-section {
-    margin-bottom: 40px;
+  margin-bottom: 40px;
 }
 
 .weapon-section h3 {
-    font-size: 24px;
-    margin-bottom: 20px;
-    color: #ff4500;
-    text-align: center;
+  font-size: 24px;
+  margin-bottom: 20px;
+  color: #ff4500;
+  text-align: center;
 }
 
 .weapon-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    gap: 20px;
-    padding: 20px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px;
+  padding: 20px;
+  justify-items: center;
 }
 
 .weapon-item {
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 10px;
-    padding: 15px;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    text-align: center;
-    position: relative;
-    overflow: hidden;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  padding: 15px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  height: 100%;
+  min-height: 200px;
+  box-sizing: border-box;
 }
 
 .weapon-item:hover {
-    transform: translateY(-5px);
-    background: rgba(255, 255, 255, 0.15);
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+  transform: translateY(-5px);
+  background: rgba(255, 255, 255, 0.15);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
 }
 
 .weapon-item.selected {
-    background: rgba(255, 69, 0, 0.2);
-    border: 2px solid #ff4500;
+  background: rgba(255, 69, 0, 0.2);
+  border: 2px solid #ff4500;
 }
 
 .weapon-item.locked {
-    opacity: 0.5;
-    cursor: not-allowed;
-    filter: grayscale(0.8);
+  opacity: 0.5;
+  cursor: not-allowed;
+  filter: grayscale(0.8);
 }
 
 .weapon-item img {
-    width: 100px;
-    height: 100px;
-    object-fit: contain;
-    margin-bottom: 10px;
-    transition: transform 0.3s ease;
+  width: 100px;
+  height: 100px;
+  object-fit: contain;
+  margin-bottom: 10px;
+  transition: transform 0.3s ease;
 }
 
 .weapon-item:hover img {
-    transform: scale(1.1);
+  transform: scale(1.1);
 }
 
 .weapon-info {
-    width: 100%;
+  width: 100%;
 }
 
 .weapon-info h3 {
-    font-size: 18px;
-    margin: 0 0 5px 0;
-    color: #ffffff;
+  font-size: 18px;
+  margin: 0 0 5px 0;
+  color: #ffffff;
 }
 
 .weapon-info p {
-    font-size: 14px;
-    margin: 0 0 10px 0;
-    color: #cccccc;
+  font-size: 14px;
+  margin: 0 0 10px 0;
+  color: #cccccc;
 }
 
 .weapon-stats {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 10px;
-    font-size: 12px;
-    color: #ff4500;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  font-size: 12px;
+  color: #ff4500;
 }
 
 .weapon-stats span {
-    background: rgba(255, 69, 0, 0.1);
-    padding: 5px 10px;
-    border-radius: 4px;
-    transition: all 0.3s ease;
+  background: rgba(255, 69, 0, 0.1);
+  padding: 5px 10px;
+  border-radius: 4px;
+  transition: all 0.3s ease;
 }
 
 .weapon-item:hover .weapon-stats span {
-    background: rgba(255, 69, 0, 0.2);
-    transform: scale(1.05);
+  background: rgba(255, 69, 0, 0.2);
+  transform: scale(1.05);
 }
 
 /* Add checkmark for selected items */
 .weapon-item.selected::after {
-    content: '✓';
-    position: absolute;
-    top: 5px;
-    right: 5px;
-    width: 20px;
-    height: 20px;
-    background: #ff4500;
-    color: white;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 12px;
-    font-weight: bold;
+  content: '✓';
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  width: 20px;
+  height: 20px;
+  background: #ff4500;
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: bold;
 }
 
 /* Responsive styles */
 @media (max-width: 768px) {
-    .weapon-grid {
-        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-        gap: 10px;
-        padding: 10px;
-    }
-    
-    .weapon-item img {
-        width: 70px;
-        height: 70px;
-    }
-    
-    .weapon-info h3 {
-        font-size: 16px;
-    }
-    
-    .weapon-info p {
-        font-size: 12px;
-    }
-    
-    .weapon-stats {
-        font-size: 10px;
-    }
+  .weapon-grid {
+    /* grid-template-columns rule removed as it's now the default */
+    gap: 10px;
+    padding: 10px;
+  }
+
+  .weapon-item img {
+    width: 70px;
+    height: 70px;
+  }
+
+  .weapon-info h3 {
+    font-size: 16px;
+  }
+
+  .weapon-info p {
+    font-size: 12px;
+  }
+
+  .weapon-stats {
+    font-size: 10px;
+  }
 }
 
 .screen-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 15px 20px;
-    background: rgba(0, 0, 0, 0.2);
-    margin-bottom: 20px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    gap: 20px; /* Add gap to create space between elements */
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 20px;
+  background: rgba(0, 0, 0, 0.2);
+  margin-bottom: 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  gap: 20px;
+  /* Add gap to create space between elements */
 }
 
 /* Special header styling for weapon selection screen */
 #weapon-selection-screen .screen-header {
-    position: sticky;
-    top: 0;
-    z-index: 10;
-    background: linear-gradient(90deg, #1a1a1a 0%, #2a2a2a 100%);
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: linear-gradient(90deg, #1a1a1a 0%, #2a2a2a 100%);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
 }
 
 .screen-header h2 {
-    color: #ff4500;
-    margin: 0;
-    font-size: 22px;
+  color: #ff4500;
+  margin: 0;
+  font-size: 22px;
 }
 
 #back-from-badges-btn {
@@ -2824,7 +2823,8 @@ canvas {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-left: 20px; /* Add margin to create space between text and button */
+  margin-left: 20px;
+  /* Add margin to create space between text and button */
 }
 
 #back-from-badges-btn:focus {
@@ -2849,135 +2849,135 @@ canvas {
 }
 
 .instructions-container {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    text-align: center;
-    padding: 2rem;
-    background: rgba(26, 26, 27, 0.85);
-    border: 2px solid var(--reddit-orangered);
-    border-radius: 20px;
-    box-shadow: 0 0 30px rgba(255, 69, 0, 0.2);
-    backdrop-filter: blur(10px);
-    animation: fadeIn 0.5s ease;
-    z-index: 1000;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  padding: 2rem;
+  background: rgba(26, 26, 27, 0.85);
+  border: 2px solid var(--reddit-orangered);
+  border-radius: 20px;
+  box-shadow: 0 0 30px rgba(255, 69, 0, 0.2);
+  backdrop-filter: blur(10px);
+  animation: fadeIn 0.5s ease;
+  z-index: 1000;
 }
 
 .username-display {
-    color: var(--reddit-orangered);
-    font-size: 1.8rem;
-    font-weight: bold;
-    margin-bottom: 1rem;
-    text-shadow: 0 0 10px rgba(255, 69, 0, 0.3);
+  color: var(--reddit-orangered);
+  font-size: 1.8rem;
+  font-weight: bold;
+  margin-bottom: 1rem;
+  text-shadow: 0 0 10px rgba(255, 69, 0, 0.3);
 }
 
 .username {
-    color: #fff;
-    position: relative;
-    display: inline-block;
-    padding: 0.2rem 0.8rem;
-    background: rgba(255, 69, 0, 0.2);
-    border-radius: 15px;
-    border: 1px solid rgba(255, 69, 0, 0.3);
-    animation: pulse 2s ease-in-out infinite;
+  color: #fff;
+  position: relative;
+  display: inline-block;
+  padding: 0.2rem 0.8rem;
+  background: rgba(255, 69, 0, 0.2);
+  border-radius: 15px;
+  border: 1px solid rgba(255, 69, 0, 0.3);
+  animation: pulse 2s ease-in-out infinite;
 }
 
 .start-prompt {
-    color: #fff;
-    font-size: 1.4rem;
-    margin-top: 1rem;
-    opacity: 0.9;
-    text-shadow: 0 0 15px rgba(255, 255, 255, 0.5);
+  color: #fff;
+  font-size: 1.4rem;
+  margin-top: 1rem;
+  opacity: 0.9;
+  text-shadow: 0 0 15px rgba(255, 255, 255, 0.5);
 }
 
 .loading-message {
-    color: #ccc;
-    font-size: 1.4rem;
-    margin-bottom: 1rem;
-    opacity: 0.8;
+  color: #ccc;
+  font-size: 1.4rem;
+  margin-bottom: 1rem;
+  opacity: 0.8;
 }
 
 /* Weapon tooltip styles */
 .weapon-tooltip {
-    position: absolute;
-    top: 100%;
-    left: 50%;
-    transform: translateX(-50%);
-    background: rgba(26, 26, 27, 0.95);
-    padding: 15px;
-    border-radius: 8px;
-    border: 1px solid #ff4500;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-    width: 220px;
-    opacity: 0;
-    visibility: hidden;
-    transition: all 0.3s ease;
-    z-index: 100;
-    pointer-events: none;
-    margin-top: 10px;
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(26, 26, 27, 0.95);
+  padding: 15px;
+  border-radius: 8px;
+  border: 1px solid #ff4500;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  width: 220px;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.3s ease;
+  z-index: 100;
+  pointer-events: none;
+  margin-top: 10px;
 }
 
 .weapon-item:hover .weapon-tooltip {
-    opacity: 1;
-    visibility: visible;
-    transform: translateX(-50%) translateY(5px);
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(-50%) translateY(5px);
 }
 
 .tooltip-header {
-    font-size: 16px;
-    color: #ff4500;
-    margin-bottom: 10px;
-    font-weight: bold;
+  font-size: 16px;
+  color: #ff4500;
+  margin-bottom: 10px;
+  font-weight: bold;
 }
 
 .tooltip-stats {
-    margin-bottom: 10px;
+  margin-bottom: 10px;
 }
 
 .tooltip-stat {
-    display: flex;
-    justify-content: space-between;
-    margin-bottom: 5px;
-    color: #ffffff;
-    font-size: 14px;
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 5px;
+  color: #ffffff;
+  font-size: 14px;
 }
 
 .tooltip-powers {
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
-    padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  padding-top: 10px;
 }
 
 .power-description {
-    color: #cccccc;
-    font-size: 13px;
-    line-height: 1.4;
-    font-style: italic;
+  color: #cccccc;
+  font-size: 13px;
+  line-height: 1.4;
+  font-style: italic;
 }
 
 /* Lock overlay for unavailable weapons */
 .weapon-item.locked::before {
-    content: '🔒';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    font-size: 32px;
-    color: #ff4500;
-    text-shadow: 0 0 10px rgba(255, 69, 0, 0.5);
-    z-index: 2;
+  content: '🔒';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 32px;
+  color: #ff4500;
+  text-shadow: 0 0 10px rgba(255, 69, 0, 0.5);
+  z-index: 2;
 }
 
 .weapon-item.locked::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.7);
-    border-radius: 10px;
-    z-index: 1;
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  border-radius: 10px;
+  z-index: 1;
 }
 
 /* Podium Styles */
@@ -3193,8 +3193,15 @@ canvas {
 }
 
 @keyframes trophyBounce {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.2); }
+
+  0%,
+  100% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.2);
+  }
 }
 
 /* Responsive styles */
@@ -3229,6 +3236,7 @@ canvas {
 }
 
 @media (max-width: 480px) {
+
   .top-player-container,
   .leaderboard-container {
     padding: 20px;
@@ -3270,7 +3278,7 @@ canvas {
   background: #222;
   border-radius: 12px;
   border: 2px solid #444;
-  box-shadow: 0 0 20px rgba(0,0,0,0.5);
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
   width: 90%;
   max-width: 500px;
   overflow: hidden;
@@ -3339,7 +3347,7 @@ canvas {
 .custom-input:focus {
   outline: none;
   border-color: #666;
-  box-shadow: 0 0 5px rgba(255,255,255,0.2);
+  box-shadow: 0 0 5px rgba(255, 255, 255, 0.2);
 }
 
 .help-text {
@@ -3394,11 +3402,19 @@ canvas {
   background: rgba(255, 255, 255, 0.05);
   border: 2px dashed rgba(255, 255, 255, 0.2);
   border-radius: 10px;
-  padding: 20px;
-  margin-bottom: 20px;
+  padding: 15px;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.3s ease;
   text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: 100%;
+  min-height: 200px;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  box-sizing: border-box;
 }
 
 .create-custom-weapon:hover {
@@ -3411,6 +3427,8 @@ canvas {
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  width: 100%;
+  height: 100%;
 }
 
 .create-icon {

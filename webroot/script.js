@@ -2154,21 +2154,21 @@ function createWeaponTooltip(weapon) {
 // Request custom weapons from the server
 function requestCustomWeapons() {
     console.log("Requesting custom weapons from server");
-    
+
     try {
         // Send request to server for custom weapons data
         postWebViewMessage({
             type: 'requestCustomItems',
             data: { username: username }
         })
-        .then(response => {
-            console.log("Custom weapons request sent successfully");
-        })
-        .catch(error => {
-            console.error("Error requesting custom weapons:", error);
-            // Show error notification to user
-            showError("Failed to load custom items. Please try again later.");
-        });
+            .then(response => {
+                console.log("Custom weapons request sent successfully");
+            })
+            .catch(error => {
+                console.error("Error requesting custom weapons:", error);
+                // Show error notification to user
+                showError("Failed to load custom items. Please try again later.");
+            });
     } catch (err) {
         console.error("Failed to request custom weapons:", err);
         showError("An unexpected error occurred while loading custom items.");
@@ -2178,12 +2178,12 @@ function requestCustomWeapons() {
 // Handle custom weapons data received from server
 function handleCustomWeaponsData(data) {
     console.log("Processing custom weapons data:", data);
-    
+
     // Check if we have paddle data (previously called 'weapon')
     if (data.weapon && Array.isArray(data.weapon)) {
         customWeapons = data.weapon || [];
         console.log(`Received ${customWeapons.length} custom paddles`);
-        
+
         // Process custom paddles if we have any
         if (customWeapons.length > 0) {
             customWeapons.forEach(weapon => {
@@ -2191,7 +2191,7 @@ function handleCustomWeaponsData(data) {
                 if (weapon.id && weapon.imageUrl) {
                     // Create a unique key for the custom paddle
                     const paddleKey = `custom_${weapon.id}`;
-                    
+
                     // Add to weapons system
                     weapons.paddles[paddleKey] = {
                         name: weapon.name || 'Custom Paddle',
@@ -2202,7 +2202,7 @@ function handleCustomWeaponsData(data) {
                         specialPower: weapon.properties?.specialPower || null,
                         isCustom: true
                     };
-                    
+
                     console.log(`Added custom paddle: ${paddleKey}`, weapons.paddles[paddleKey]);
                 }
             });
@@ -2210,12 +2210,12 @@ function handleCustomWeaponsData(data) {
     } else {
         console.log("No custom paddles received or invalid data format");
     }
-    
+
     // Check if we have ball data
     if (data.ball && Array.isArray(data.ball)) {
         customBalls = data.ball || [];
         console.log(`Received ${customBalls.length} custom balls`);
-        
+
         // Process custom balls if we have any
         if (customBalls.length > 0) {
             customBalls.forEach(ball => {
@@ -2223,7 +2223,7 @@ function handleCustomWeaponsData(data) {
                 if (ball.id && ball.imageUrl) {
                     // Create a unique key for the custom ball
                     const ballKey = `custom_${ball.id}`;
-                    
+
                     // Add to weapons system
                     weapons.balls[ballKey] = {
                         name: ball.name || 'Custom Ball',
@@ -2234,7 +2234,7 @@ function handleCustomWeaponsData(data) {
                         gravity: ball.properties?.gravity || 0.2,
                         isCustom: true
                     };
-                    
+
                     console.log(`Added custom ball: ${ballKey}`, weapons.balls[ballKey]);
                 }
             });
@@ -2242,13 +2242,13 @@ function handleCustomWeaponsData(data) {
     } else {
         console.log("No custom balls received or invalid data format");
     }
-    
+
     // Update the weapons selection UI if it's currently open
     const paddleContainer = document.getElementById('paddle-selection');
     if (paddleContainer && paddleContainer.parentElement && paddleContainer.parentElement.classList.contains('active')) {
         populatePaddleSelection();
     }
-    
+
     const ballContainer = document.getElementById('ball-selection');
     if (ballContainer && ballContainer.parentElement && ballContainer.parentElement.classList.contains('active')) {
         populateBallSelection();
@@ -2258,19 +2258,19 @@ function handleCustomWeaponsData(data) {
 // Request custom weapons from server
 function requestCustomWeapons() {
     console.log("Requesting custom weapons from server");
-    
+
     try {
         postWebViewMessage({
             type: 'fetchCustomWeapons',
             data: { username: username }
         })
-        .then(response => {
-            console.log("Custom weapons request sent successfully");
-        })
-        .catch(error => {
-            console.error("Error requesting custom weapons:", error);
-            showError("Failed to load custom items. Please try again later.");
-        });
+            .then(response => {
+                console.log("Custom weapons request sent successfully");
+            })
+            .catch(error => {
+                console.error("Error requesting custom weapons:", error);
+                showError("Failed to load custom items. Please try again later.");
+            });
     } catch (err) {
         console.error("Failed to request custom weapons:", err);
         showError("An unexpected error occurred while loading custom items.");
@@ -2691,9 +2691,13 @@ function populatePaddleSelection() {
     // Clear existing content
     paddleContainer.innerHTML = '';
 
-    // Add "Create Custom Paddle" button at the top
+    const standardSectionTitle = document.createElement('h3');
+    standardSectionTitle.className = 'section-title'; // Assuming a class for styling
+    standardSectionTitle.textContent = 'Standard Paddles';
+
+    // --- Create the "Create Custom Paddle" button element ---
     const createCustomButton = document.createElement('div');
-    createCustomButton.className = 'create-custom-weapon';
+    createCustomButton.className = 'create-custom-weapon weapon-item'; // Add weapon-item for grid layout
     createCustomButton.innerHTML = `
         <div class="create-custom-content">
             <div class="create-icon">+</div>
@@ -2709,15 +2713,15 @@ function populatePaddleSelection() {
         fileInput.accept = 'image/png, image/jpeg, image/gif';
         fileInput.style.display = 'none';
         document.body.appendChild(fileInput);
-        
+
         // Trigger the file dialog
         fileInput.click();
-        
+
         // Handle file selection
         fileInput.addEventListener('change', (e) => {
             if (fileInput.files && fileInput.files[0]) {
                 const file = fileInput.files[0];
-                
+
                 // Create upload modal
                 const modal = document.createElement('div');
                 modal.className = 'modal';
@@ -2744,12 +2748,12 @@ function populatePaddleSelection() {
                         </div>
                     </div>
                 `;
-                
+
                 document.body.appendChild(modal);
-                
+
                 // Show the modal
                 setTimeout(() => modal.classList.add('active'), 10);
-                
+
                 // Setup preview
                 const reader = new FileReader();
                 reader.onload = (event) => {
@@ -2757,49 +2761,52 @@ function populatePaddleSelection() {
                     paddlePreview.src = event.target.result;
                 };
                 reader.readAsDataURL(file);
-                
+
                 // Modal close button
                 const closeBtn = modal.querySelector('.modal-close');
                 const cancelBtn = modal.querySelector('#cancel-upload');
-                
+
                 const closeModal = () => {
                     modal.classList.remove('active');
                     setTimeout(() => modal.remove(), 300);
-                    document.body.removeChild(fileInput);
+                    // Only remove fileInput if it's still attached
+                    if (fileInput.parentNode === document.body) {
+                        document.body.removeChild(fileInput);
+                    }
                 };
-                
+
                 closeBtn.addEventListener('click', closeModal);
                 cancelBtn.addEventListener('click', closeModal);
-                
+
                 // Confirm upload
                 const confirmBtn = modal.querySelector('#confirm-upload');
                 confirmBtn.addEventListener('click', () => {
                     const paddleName = document.getElementById('paddle-name').value.trim() || 'Custom Paddle';
-                    
+
                     // Convert the file to a data URL for upload
                     const reader = new FileReader();
                     reader.onload = (event) => {
                         const imageData = event.target.result;
-                        
+
                         // Show loading state
                         confirmBtn.disabled = true;
                         confirmBtn.textContent = 'Creating...';
-                        
+
                         // Send to server
                         postWebViewMessage({
                             type: 'imageUploaded',
                             data: {
                                 imageUrl: imageData,
-                                itemType: 'weapon',
+                                itemType: 'weapon', // Changed from 'paddle' if needed, check server expectation
                                 itemName: paddleName
                             }
                         }).then(() => {
                             // Show success and close modal
                             showAward('gold', 'Custom paddle created successfully!');
                             closeModal();
-                            
-                            // Request updated custom weapons
-                            requestCustomWeapons();
+
+                            // Request updated custom weapons (which will repopulate the selection)
+                            requestCustomWeapons(); // Assuming this triggers a repopulation
                         }).catch(error => {
                             console.error('Error uploading image:', error);
                             confirmBtn.disabled = false;
@@ -2809,67 +2816,26 @@ function populatePaddleSelection() {
                     };
                     reader.readAsDataURL(file);
                 });
+            } else {
+                // Clean up the input element if no file was selected or dialog cancelled
+                if (fileInput.parentNode === document.body) {
+                    document.body.removeChild(fileInput);
+                }
             }
-            
-            // Clean up the input element if no file was selected
-            if (!fileInput.files || !fileInput.files[0]) {
+        });
+        // Add error handling for file input click itself if needed
+        fileInput.addEventListener('error', (err) => {
+            console.error("Error with file input:", err);
+            if (fileInput.parentNode === document.body) {
                 document.body.removeChild(fileInput);
             }
+            showError("Could not open file dialog.");
         });
     });
+    // --- End Create Custom Paddle Button ---
 
+    // Append the "Create Custom Paddle" button first to the grid container
     paddleContainer.appendChild(createCustomButton);
-
-    // Populate custom paddles if available
-    if (customWeapons && customWeapons.length > 0) {
-        const customSection = document.createElement('div');
-        customSection.className = 'weapon-section';
-        customSection.innerHTML = '<h3 class="section-title">Your Custom Paddles</h3>';
-        paddleContainer.appendChild(customSection);
-
-        customWeapons.forEach(customPaddle => {
-            // Create a paddle object compatible with the game
-            const paddleObj = {
-                name: customPaddle.name,
-                image: customPaddle.imageUrl,
-                bounceHeight: 1.0,
-                speedMultiplier: 1.0,
-                unlockScore: 0,
-                isCustom: true
-            };
-
-            const isSelected = selectedPaddle && selectedPaddle.isCustom &&
-                selectedPaddle.image === paddleObj.image;
-
-            const paddleElement = document.createElement('div');
-            paddleElement.className = `weapon-item unlocked ${isSelected ? 'selected' : ''}`;
-            paddleElement.innerHTML = `
-                <img src="${paddleObj.image}" alt="${paddleObj.name}">
-                <div class="weapon-info">
-                    <h3>${paddleObj.name}</h3>
-                    <p>Custom Paddle</p>
-                    <div class="weapon-stats">
-                        <span>Bounce: 1.0x</span>
-                        <span>Speed: 1.0x</span>
-                    </div>
-                </div>
-            `;
-
-            paddleElement.addEventListener('click', () => selectPaddle(paddleObj));
-            paddleContainer.appendChild(paddleElement);
-        });
-    }
-
-    // Add a separator
-    const separator = document.createElement('div');
-    separator.className = 'weapon-separator';
-    paddleContainer.appendChild(separator);
-
-    // Add standard section title
-    const standardSection = document.createElement('div');
-    standardSection.className = 'weapon-section';
-    standardSection.innerHTML = '<h3 class="section-title">Standard Paddles</h3>';
-    paddleContainer.appendChild(standardSection);
 
     // Populate standard paddles
     Object.entries(weapons.paddles).forEach(([key, paddle]) => {
@@ -2912,9 +2878,9 @@ function populateBallSelection() {
     // Clear existing content
     ballContainer.innerHTML = '';
 
-    // Add "Create Custom Ball" button at the top
+    // --- Create the "Create Custom Ball" button element ---
     const createCustomButton = document.createElement('div');
-    createCustomButton.className = 'create-custom-weapon';
+    createCustomButton.className = 'create-custom-weapon weapon-item'; // Add weapon-item for grid layout
     createCustomButton.innerHTML = `
         <div class="create-custom-content">
             <div class="create-icon">+</div>
@@ -2930,15 +2896,15 @@ function populateBallSelection() {
         fileInput.accept = 'image/png, image/jpeg, image/gif';
         fileInput.style.display = 'none';
         document.body.appendChild(fileInput);
-        
+
         // Trigger the file dialog
         fileInput.click();
-        
+
         // Handle file selection
         fileInput.addEventListener('change', (e) => {
             if (fileInput.files && fileInput.files[0]) {
                 const file = fileInput.files[0];
-                
+
                 // Create upload modal
                 const modal = document.createElement('div');
                 modal.className = 'modal';
@@ -2965,12 +2931,12 @@ function populateBallSelection() {
                         </div>
                     </div>
                 `;
-                
+
                 document.body.appendChild(modal);
-                
+
                 // Show the modal
                 setTimeout(() => modal.classList.add('active'), 10);
-                
+
                 // Setup preview
                 const reader = new FileReader();
                 reader.onload = (event) => {
@@ -2978,34 +2944,37 @@ function populateBallSelection() {
                     ballPreview.src = event.target.result;
                 };
                 reader.readAsDataURL(file);
-                
+
                 // Modal close button
                 const closeBtn = modal.querySelector('.modal-close');
                 const cancelBtn = modal.querySelector('#cancel-upload');
-                
+
                 const closeModal = () => {
                     modal.classList.remove('active');
                     setTimeout(() => modal.remove(), 300);
-                    document.body.removeChild(fileInput);
+                    // Only remove fileInput if it's still attached
+                    if (fileInput.parentNode === document.body) {
+                        document.body.removeChild(fileInput);
+                    }
                 };
-                
+
                 closeBtn.addEventListener('click', closeModal);
                 cancelBtn.addEventListener('click', closeModal);
-                
+
                 // Confirm upload
                 const confirmBtn = modal.querySelector('#confirm-upload');
                 confirmBtn.addEventListener('click', () => {
                     const ballName = document.getElementById('ball-name').value.trim() || 'Custom Ball';
-                    
+
                     // Convert the file to a data URL for upload
                     const reader = new FileReader();
                     reader.onload = (event) => {
                         const imageData = event.target.result;
-                        
+
                         // Show loading state
                         confirmBtn.disabled = true;
                         confirmBtn.textContent = 'Creating...';
-                        
+
                         // Send to server
                         postWebViewMessage({
                             type: 'imageUploaded',
@@ -3018,9 +2987,9 @@ function populateBallSelection() {
                             // Show success and close modal
                             showAward('gold', 'Custom ball created successfully!');
                             closeModal();
-                            
-                            // Request updated custom weapons
-                            requestCustomWeapons();
+
+                            // Request updated custom weapons (which includes balls)
+                            requestCustomWeapons(); // Assuming this triggers a repopulation
                         }).catch(error => {
                             console.error('Error uploading image:', error);
                             confirmBtn.disabled = false;
@@ -3030,120 +2999,28 @@ function populateBallSelection() {
                     };
                     reader.readAsDataURL(file);
                 });
+            } else {
+                // Clean up the input element if no file was selected or dialog cancelled
+                if (fileInput.parentNode === document.body) {
+                    document.body.removeChild(fileInput);
+                }
             }
-            
-            // Clean up the input element if no file was selected
-            if (!fileInput.files || !fileInput.files[0]) {
+        });
+        // Add error handling for file input click itself if needed
+        fileInput.addEventListener('error', (err) => {
+            console.error("Error with file input:", err);
+            if (fileInput.parentNode === document.body) {
                 document.body.removeChild(fileInput);
             }
+            showError("Could not open file dialog.");
         });
     });
+    // --- End Create Custom Ball Button ---
 
+    // Append the "Create Custom Ball" button first to the grid container
     ballContainer.appendChild(createCustomButton);
 
-    // Populate custom balls if available
-    if (customBalls && customBalls.length > 0) {
-        const customSection = document.createElement('div');
-        customSection.className = 'weapon-section';
-        customSection.innerHTML = '<h3 class="section-title">Your Custom Balls</h3>';
-        ballContainer.appendChild(customSection);
-
-        customBalls.forEach(customBall => {
-            // Create a ball object compatible with the game
-            const ballObj = {
-                name: customBall.name,
-                image: customBall.imageUrl,
-                bounceMultiplier: 1.0,
-                gravity: 1.0,
-                unlockScore: 0,
-                isCustom: true
-            };
-
-            const isSelected = selectedBall && selectedBall.isCustom &&
-                selectedBall.image === ballObj.image;
-
-            const ballElement = document.createElement('div');
-            ballElement.className = `weapon-item unlocked ${isSelected ? 'selected' : ''}`;
-            ballElement.innerHTML = `
-                <img src="${ballObj.image}" alt="${ballObj.name}" class="ball-image">
-                <div class="weapon-info">
-                    <h3>${ballObj.name}</h3>
-                    <p>Custom Ball</p>
-                    <div class="weapon-stats">
-                        <span>Bounce: 1.0x</span>
-                        <span>Gravity: 1.0x</span>
-                    </div>
-                </div>
-            `;
-
-            ballElement.addEventListener('click', () => selectBall(ballObj));
-            ballContainer.appendChild(ballElement);
-        });
-    }
-
-    // Add a separator for balls
-    const ballSeparator = document.createElement('div');
-    ballSeparator.className = 'weapon-separator';
-    ballContainer.appendChild(ballSeparator);
-
-    // Add standard section title for balls
-    const ballStandardSection = document.createElement('div');
-    ballStandardSection.className = 'weapon-section';
-    ballStandardSection.innerHTML = '<h3 class="section-title">Standard Balls</h3>';
-    ballContainer.appendChild(ballStandardSection);
-
-    // Populate custom balls if available
-    if (customBalls && customBalls.length > 0) {
-        const customSection = document.createElement('div');
-        customSection.className = 'weapon-section';
-        customSection.innerHTML = '<h3 class="section-title">Your Custom Balls</h3>';
-        ballContainer.appendChild(customSection);
-
-        customBalls.forEach(customBall => {
-            // Create a ball object compatible with the game
-            const ballObj = {
-                name: customBall.name,
-                image: customBall.imageUrl,
-                speedMultiplier: 1.0,
-                bounceMultiplier: 1.0,
-                unlockScore: 0,
-                isCustom: true
-            };
-
-            const isSelected = selectedBall && selectedBall.isCustom &&
-                selectedBall.image === ballObj.image;
-
-            const ballElement = document.createElement('div');
-            ballElement.className = `weapon-item unlocked ${isSelected ? 'selected' : ''}`;
-            ballElement.innerHTML = `
-                <img src="${ballObj.image}" alt="${ballObj.name}">
-                <div class="weapon-info">
-                    <h3>${ballObj.name}</h3>
-                    <p>Custom Ball</p>
-                    <div class="weapon-stats">
-                        <span>Speed: 1.0x</span>
-                        <span>Bounce: 1.0x</span>
-                    </div>
-                </div>
-            `;
-
-            ballElement.addEventListener('click', () => selectBall(ballObj));
-            ballContainer.appendChild(ballElement);
-        });
-    }
-
-    // Add a separator
-    const separator = document.createElement('div');
-    separator.className = 'weapon-separator';
-    ballContainer.appendChild(separator);
-
-    // Add standard section title
-    const standardSection = document.createElement('div');
-    standardSection.className = 'weapon-section';
-    standardSection.innerHTML = '<h3 class="section-title">Standard Balls</h3>';
-    ballContainer.appendChild(standardSection);
-
-    // Populate standard balls
+    // Populate standard balls (directly after the create button)
     Object.entries(weapons.balls).forEach(([key, ball]) => {
         const isUnlocked = highScore >= ball.unlockScore;
         const isSelected = selectedBall === ball;

@@ -6,6 +6,34 @@
     <title>Don't Drop - Weekly Leaderboard</title>
     <link rel="stylesheet" href="style.css" />
     <link rel="stylesheet" href="fixes.css" />
+    <style>
+      @keyframes spin {
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
+      }
+
+      .loading-spinner {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 30px;
+      }
+
+      .spinner {
+        width: 40px;
+        height: 40px;
+        border: 4px solid rgba(255, 69, 0, 0.3);
+        border-top: 4px solid var(--reddit-orangered);
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin-bottom: 15px;
+      }
+    </style>
   </head>
   <body class="leaderboard-page">
     <div class="leaderboard-post">
@@ -49,13 +77,61 @@
       </div>
     </div>
 
-    <script>
-      // Parse leaderboard data from URL parameters
-      const urlParams = new URLSearchParams(window.location.search);
-      const data = JSON.parse(
-        decodeURIComponent(urlParams.get("data") || "[]")
-      );
+    <div id="leaderboard-screen" class="screen">
+      <div class="screen-content">
+        <h2>Leaderboard</h2>
 
+        <div class="leaderboard-container">
+          <div class="leaderboard-tabs">
+            <button class="tab-button active" data-tab="this-subreddit">
+              This Subreddit
+            </button>
+            <button class="tab-button" data-tab="all-subreddits">
+              All Subreddits
+            </button>
+          </div>
+
+          <div class="tab-content active" id="this-subreddit-leaderboard">
+            <table class="leaderboard-table">
+              <thead>
+                <tr>
+                  <th>Rank</th>
+                  <th>Redditor</th>
+                  <th>Score</th>
+                  <th>Date</th>
+                </tr>
+              </thead>
+              <tbody id="this-subreddit-leaderboard-body">
+                <!-- This subreddit's entries will go here -->
+              </tbody>
+            </table>
+          </div>
+
+          <div class="tab-content" id="all-subreddits-leaderboard">
+            <table class="leaderboard-table">
+              <thead>
+                <tr>
+                  <th>Rank</th>
+                  <th>Redditor</th>
+                  <th>Score</th>
+                  <th>Subreddit</th>
+                  <th>Date</th>
+                </tr>
+              </thead>
+              <tbody id="all-subreddits-leaderboard-body">
+                <!-- All subreddits' entries will go here -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <button id="back-from-leaderboard-btn" class="menu-button">
+          Back to Menu
+        </button>
+      </div>
+    </div>
+
+    <script>
       // Format date
       const dateElement = document.getElementById("current-date");
       const options = {
@@ -69,41 +145,106 @@
         options
       );
 
-      // Render leaderboard
-      const leaderboardBody = document.getElementById("leaderboard-body");
-      data.forEach((entry, index) => {
-        const row = document.createElement("tr");
-        const medal = index < 3 ? ["🥇", "🥈", "🥉"][index] : "";
-
-        row.innerHTML = `
-        <td>${medal} ${index + 1}</td>
-        <td>${entry.username}</td>
-        <td>${entry.score.toLocaleString()}</td>
-        <td>${getAchievementText(entry.score)}</td>
-      `;
-
-        leaderboardBody.appendChild(row);
-
-        // Populate spotlight for the top player
-        if (index === 0) {
-          document.getElementById("spotlight-name").textContent =
-            entry.username;
-          document.getElementById("spotlight-score").textContent =
-            entry.score.toLocaleString();
-          document.getElementById("spotlight-rank").textContent = `#${
-            index + 1
-          }`;
-          document.getElementById("spotlight-achievement").textContent =
-            getAchievementText(entry.score);
-        }
-      });
-
+      // Function to get achievement text based on score
       function getAchievementText(score) {
         if (score >= 250) return "🎯 Reddit Legend";
         if (score >= 100) return "🎮 Paddle Master";
         if (score >= 50) return "🏓 Table Tennis Novice";
         return "🎱 Ping Pong Beginner";
       }
+
+      // Function to render the main leaderboard
+      function renderMainLeaderboard(entries) {
+        const leaderboardBody = document.getElementById("leaderboard-body");
+        if (!leaderboardBody) return;
+
+        // Clear existing entries
+        leaderboardBody.innerHTML = "";
+
+        if (!entries || entries.length === 0) {
+          const emptyRow = document.createElement("tr");
+          emptyRow.innerHTML = `<td colspan="4" style="text-align: center; padding: 20px;">No scores yet! Be the first to play!</td>`;
+          leaderboardBody.appendChild(emptyRow);
+          return;
+        }
+
+        // Add entries to the table
+        entries.forEach((entry, index) => {
+          const row = document.createElement("tr");
+          const medal = index < 3 ? ["🥇", "🥈", "🥉"][index] : "";
+
+          row.innerHTML = `
+            <td>${medal} ${index + 1}</td>
+            <td>${entry.username}</td>
+            <td>${
+              typeof entry.score === "number"
+                ? entry.score.toLocaleString()
+                : entry.score
+            }</td>
+            <td>${getAchievementText(entry.score)}</td>
+          `;
+
+          leaderboardBody.appendChild(row);
+
+          // Populate spotlight for the top player
+          if (index === 0) {
+            document.getElementById("spotlight-name").textContent =
+              entry.username;
+            document.getElementById("spotlight-score").textContent =
+              typeof entry.score === "number"
+                ? entry.score.toLocaleString()
+                : entry.score;
+            document.getElementById("spotlight-rank").textContent = `#${
+              index + 1
+            }`;
+            document.getElementById("spotlight-achievement").textContent =
+              getAchievementText(entry.score);
+          }
+        });
+      }
+
+      // Function to fetch leaderboard data
+      function fetchLeaderboardData() {
+        // Try to get data from URL parameters first
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlData = urlParams.get("data");
+
+        if (urlData) {
+          try {
+            const parsedData = JSON.parse(decodeURIComponent(urlData));
+            if (Array.isArray(parsedData) && parsedData.length > 0) {
+              console.log("Using data from URL parameters");
+              renderMainLeaderboard(parsedData);
+              return;
+            }
+          } catch (e) {
+            console.error("Error parsing URL data:", e);
+          }
+        }
+
+        // If no URL data or invalid, show loading state
+        console.log("No valid data in URL parameters, showing loading state");
+        const leaderboardBody = document.getElementById("leaderboard-body");
+        if (leaderboardBody) {
+          leaderboardBody.innerHTML = `
+            <tr>
+              <td colspan="4" style="text-align: center; padding: 20px;">
+                <div class="loading-spinner">
+                  <div class="spinner"></div>
+                  <p>Loading leaderboard data...</p>
+                </div>
+              </td>
+            </tr>
+          `;
+        }
+
+        // Note: In a real environment, this would be populated with data from Redis
+        // via the Devvit backend. The data is passed through URL parameters when
+        // the leaderboard is posted by the weekly_leaderboard_update scheduler job.
+      }
+
+      // Initialize the page when it's loaded
+      fetchLeaderboardData();
     </script>
   </body>
 </html>
